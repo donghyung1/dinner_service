@@ -66,3 +66,31 @@ class PlaceRepository:
         """이름순(동률은 id) 페이지. 통합 목록(PRD 5.12)에서 내 식당 뒤에 이어 붙는다."""
         stmt = self._browse_filters(select(Place), **flt).order_by(Place.name, Place.id)
         return list(self.db.scalars(stmt.offset(offset).limit(limit)))
+
+    # --- 내 위치 추천 (v0.9) ---
+
+    def dongs_like(self, *, sigungu: str | None, stem: str) -> list[str]:
+        """어간으로 시작하는 행정동 이름들(동 그룹 후보). 그룹 일치 판정은 호출 측(core.region)이 한다."""
+        stmt = select(Place.dong).where(Place.dong.like(f"{_like_escape(stem)}%", escape="\\")).distinct()
+        if sigungu:
+            stmt = stmt.where(Place.sigungu == sigungu)
+        return [d for d in self.db.scalars(stmt) if d]
+
+    def count_in_region(self, *, sigungu, dongs, categories) -> int:
+        stmt = self._region_filters(select(func.count()).select_from(Place), sigungu, dongs, categories)
+        return int(self.db.scalar(stmt) or 0)
+
+    def sample_in_region(self, *, sigungu, dongs, categories, limit: int) -> list[Place]:
+        """내 식당에 아직 연결되지 않은 지역 내 식당 무작위 표본."""
+        stmt = self._region_filters(select(Place), sigungu, dongs, categories)
+        return list(self.db.scalars(stmt.order_by(func.rand()).limit(limit)))
+
+    @staticmethod
+    def _region_filters(stmt, sigungu, dongs, categories):
+        if sigungu:
+            stmt = stmt.where(Place.sigungu == sigungu)
+        if dongs is not None:
+            stmt = stmt.where(Place.dong.in_(dongs))
+        if categories:
+            stmt = stmt.where(Place.category.in_(categories))
+        return stmt.where(~PlaceRepository._registered())

@@ -1,8 +1,9 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { chipGroup, restaurantBadges, spinner } from '../components/ui.js';
+import { badge, chipGroup, restaurantBadges, spinner } from '../components/ui.js';
+import { locationBar, locationLabel } from '../components/locationBar.js';
 import { showToast } from '../components/toast.js';
-import { CATEGORIES, PRICES, STATUSES, categoryLabel } from '../constants.js';
+import { CATEGORIES, PRICES, STATUSES, categoryLabel, placeToFormValues } from '../constants.js';
 
 const STORAGE_KEY = 'dinner.recommend.filters';
 const DEFAULTS = { categories: [], prices: [], status: '', days: 7, favoriteOnly: false };
@@ -54,14 +55,20 @@ function saveFlag(key, on) {
   }
 }
 
-function toQuery(f, excludeId, stale) {
+const isPlace = (r) => r.source === 'place';
+const candKey = (r) => (isPlace(r) ? `p${r.place_no}` : `m${r.id}`);
+
+function toQuery(f, excludeRec, stale, loc) {
   return {
     category: f.categories,
     price_level: f.prices,
     status: f.status || undefined,
     is_favorite: f.favoriteOnly ? true : undefined,
     exclude_recent_days: f.days,
-    exclude_id: excludeId,
+    exclude_id: excludeRec && !isPlace(excludeRec) ? excludeRec.id : undefined,
+    exclude_place_no: excludeRec && isPlace(excludeRec) ? excludeRec.place_no : undefined,
+    sigungu: loc?.sigungu,
+    dong: loc?.dong || undefined,
     stale_wishlist: stale ? true : undefined,
   };
 }
@@ -79,6 +86,7 @@ export function recommendView(outlet, _params, ctx) {
   let fateCount = 1; // 현재 흐름에서 보고 있는 결과 번호 (메모리 전용)
   let stale = false; // 현재 흐름이 [미뤄둔 곳 뽑기]인지
   let lastRes = null;
+  const locBar = locationBar({ isCurrent: ctx.isCurrent, onChange: () => { lastRes = null; resultBox.replaceChildren(); } });
 
   const resultBox = h('div', { class: 'result', 'aria-live': 'polite', 'aria-atomic': 'true' });
 
@@ -254,9 +262,9 @@ export function recommendView(outlet, _params, ctx) {
     }
   }
 
-  function draw(excludeId) {
+  function draw(excludeRec) {
     if (busy || !guardDays()) return;
-    return run(() => api.recommend(toQuery(filters, excludeId, stale)), (res) => {
+    return run(() => api.recommend(toQuery(filters, excludeRec, stale, locBar.get())), (res) => {
       lastRes = res;
       renderResult(res);
     });
@@ -265,7 +273,7 @@ export function recommendView(outlet, _params, ctx) {
   function drawCandidates() {
     if (busy || !guardDays()) return;
     return run(
-      () => api.recommendCandidates({ ...toQuery(filters, undefined, stale), count: TOURNAMENT_SIZE }),
+      () => api.recommendCandidates({ ...toQuery(filters, undefined, stale, locBar.get()), count: TOURNAMENT_SIZE }),
       (res) => {
         renderTournament(res.restaurants || []);
       },
@@ -275,15 +283,17 @@ export function recommendView(outlet, _params, ctx) {
   /** 다시 뽑기: 직전 식당을 넘김으로 기록(실패 무시)하고 같은 조건으로 다시 뽑는다. */
   function again(r) {
     if (busy) return;
-    api.createSkip(r.id).catch(() => {});
+    if (!isPlace(r)) api.createSkip(r.id).catch(() => {}); // 넘김 기록은 내 식당에만 남긴다
     fateCount += 1;
-    return draw(r.id);
+    return draw(r);
   }
 
   async function accept(r, btn, statusEl) {
     btn.disabled = true;
     try {
-      await api.createVisit({ restaurant_id: r.id, source: 'RECOMMENDATION' });
+      // 동네 식당은 먼저 내 식당(가보고 싶음)으로 추가한 뒤 방문을 기록한다.
+      const id = isPlace(r) ? (await api.createRestaurant({ ...placeToFormValues(r), status: 'WISHLIST' })).id : r.id;
+      await api.createVisit({ restaurant_id: id, source: 'RECOMMENDATION' });
       showToast(`${r.name} 방문을 기록했어요. 맛있게 드세요!`, 'success');
       statusEl.replaceChildren(
         h('p', { class: 'accepted' }, ['✔ 오늘 방문으로 기록했어요. ', h('a', { href: '#/visits' }, '기록 보기')]),
@@ -296,7 +306,29 @@ export function recommendView(outlet, _params, ctx) {
     }
   }
 
+  const placeBadges = (r) =>
+    h('div', { class: 'badges' }, [badge(categoryLabel(r.category), 'badge-cat'), badge('동네 식당(공공데이터)')]);
+  const badgesOf = (r) => (isPlace(r) ? placeBadges(r) : restaurantBadges(r));
+
+  /** 동네 식당 [내 식당에 추가]. 추가 후 버튼은 안내 문구로 바뀐다. */
+  function addPlaceButton(r) {
+    const btn = h('button', { type: 'button', class: 'btn' }, '내 식당에 추가');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await api.createRestaurant({ ...placeToFormValues(r), status: 'WISHLIST' });
+        showToast(`"${r.name}"을(를) 내 식당에 추가했어요.`, 'success');
+        btn.textContent = '추가했어요 ✔';
+      } catch (e) {
+        btn.disabled = false;
+        showToast(e.message, 'error');
+      }
+    });
+    return btn;
+  }
+
   function factsOf(r) {
+    if (isPlace(r)) return h('dl', { class: 'facts' }, [h('dt', {}, '주소'), h('dd', {}, r.location || '주소 정보 없음')]);
     return h('dl', { class: 'facts' }, [
       r.location && [h('dt', {}, '위치'), h('dd', {}, r.location)],
       r.memo && [h('dt', {}, '메모'), h('dd', { class: 'pre' }, r.memo)],
@@ -309,10 +341,13 @@ export function recommendView(outlet, _params, ctx) {
     return h('article', { class: 'card result-card reveal' }, [
       h('p', { class: 'eyebrow' }, eyebrow),
       h('h2', { class: 'result-name' }, [r.name, r.is_favorite && h('span', { class: 'star', title: '즐겨찾기' }, ' ★')]),
-      restaurantBadges(r),
+      badgesOf(r),
       factsOf(r),
       status,
-      h('div', { class: 'actions' }, [...buttons, h('a', { class: 'btn btn-ghost', href: `#/restaurants/${r.id}` }, '상세 보기')]),
+      h('div', { class: 'actions' }, [
+        ...buttons,
+        isPlace(r) ? addPlaceButton(r) : h('a', { class: 'btn btn-ghost', href: `#/restaurants/${r.id}` }, '상세 보기'),
+      ]),
     ]);
   }
 
@@ -358,7 +393,7 @@ export function recommendView(outlet, _params, ctx) {
       const card = h('article', { class: 'card reveal' });
       const del = h('button', { type: 'button', class: 'btn btn-danger-ghost', 'aria-label': `${r.name} 지우기` }, '지우기');
       del.addEventListener('click', () => {
-        left = left.filter((x) => x.id !== r.id);
+        left = left.filter((x) => candKey(x) !== candKey(r));
         card.remove();
         if (left.length === 1) renderFinal(left[0], total);
         else {
@@ -368,9 +403,9 @@ export function recommendView(outlet, _params, ctx) {
       });
       card.append(
         h('h2', { class: 'item-name' }, [r.name, r.is_favorite && h('span', { class: 'star', title: '즐겨찾기' }, ' ★')]),
-        restaurantBadges(r),
+        badgesOf(r),
         factsOf(r),
-        h('div', { class: 'actions' }, [del]),
+        h('div', { class: 'actions' }, [del, isPlace(r) && addPlaceButton(r)]),
       );
       grid.append(card);
     }
@@ -379,6 +414,7 @@ export function recommendView(outlet, _params, ctx) {
   }
 
   function renderNoCandidates() {
+    const loc = locBar.get();
     const relax = h('button', {
       type: 'button',
       class: 'btn',
@@ -402,10 +438,11 @@ export function recommendView(outlet, _params, ctx) {
     }
     showResult(
       h('div', { class: 'state state-empty', role: 'status' }, [
-        h('p', { class: 'state-title' }, '조건에 맞는 식당이 없어요'),
+        h('p', { class: 'state-title' }, loc ? `${locationLabel(loc)}에 조건에 맞는 식당이 없어요` : '조건에 맞는 식당이 없어요'),
         h('ul', { class: 'tips' }, [
           h('li', {}, '카테고리나 가격대 선택을 줄여 보세요.'),
           h('li', {}, '최근 방문 제외 일수를 줄이거나 0으로 바꿔 보세요.'),
+          loc && h('li', {}, '위치를 넓히거나(동 전체·다른 동) 해제해 보세요.'),
           h('li', {}, '새로운 식당을 추가해 보세요.'),
         ]),
         h('div', { class: 'actions' }, [relax, reset, h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '식당 추가')]),
@@ -419,6 +456,7 @@ export function recommendView(outlet, _params, ctx) {
         h('h1', {}, '오늘 뭐 먹지?'),
         h('p', { class: 'lead' }, '조건을 고르고 버튼을 누르면 한 곳을 골라 드려요.'),
         gapBox,
+        locBar.el,
         h('form', { class: 'panel', onSubmit: (e) => { e.preventDefault(); start(); } }, [
           catGroup,
           priceGroup,

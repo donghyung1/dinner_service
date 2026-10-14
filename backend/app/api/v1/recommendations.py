@@ -12,6 +12,11 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 Svc = Annotated[RecommendationService, Depends(get_recommendation_service)]
 
 
+def _clean(v: str | None) -> str | None:
+    v = (v or "").strip()
+    return v or None
+
+
 @router.get("/random", response_model=RecommendationOut)
 def random_recommendation(
     svc: Svc,
@@ -21,6 +26,9 @@ def random_recommendation(
     is_favorite: bool | None = None,
     exclude_recent_days: Annotated[int, Query(ge=0, le=90)] = 7,
     exclude_id: Annotated[int | None, Query(ge=1)] = None,
+    exclude_place_no: Annotated[str | None, Query(max_length=30)] = None,
+    sigungu: Annotated[str | None, Query(max_length=30)] = None,
+    dong: Annotated[str | None, Query(max_length=30)] = None,
     weighted: bool = True,
     stale_wishlist: bool = False,
 ):
@@ -31,6 +39,9 @@ def random_recommendation(
         is_favorite=is_favorite,
         exclude_recent_days=exclude_recent_days,
         exclude_id=exclude_id,
+        exclude_place_no=exclude_place_no,
+        sigungu=_clean(sigungu),
+        dong=_clean(dong),
         weighted=weighted,
         stale_wishlist=stale_wishlist,
     )
@@ -45,6 +56,8 @@ def candidate_recommendations(
     is_favorite: bool | None = None,
     exclude_recent_days: Annotated[int, Query(ge=0, le=90)] = 7,
     count: Annotated[int, Query(ge=1, le=8)] = 4,
+    sigungu: Annotated[str | None, Query(max_length=30)] = None,
+    dong: Annotated[str | None, Query(max_length=30)] = None,
     weighted: bool = True,
     stale_wishlist: bool = False,
 ):
@@ -55,6 +68,8 @@ def candidate_recommendations(
         is_favorite=is_favorite,
         exclude_recent_days=exclude_recent_days,
         count=count,
+        sigungu=_clean(sigungu),
+        dong=_clean(dong),
         weighted=weighted,
         stale_wishlist=stale_wishlist,
     )

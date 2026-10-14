@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -74,18 +75,22 @@ class RestaurantList(BaseModel):
 
 
 class RecommendedRestaurant(BaseModel):
-    id: int
+    """추천 후보 1건. source="place" 이면 공공데이터 동네 식당이다(id·상태·방문 정보 없음)."""
+
+    source: Literal["mine", "place"] = "mine"
+    id: int | None = None
+    place_no: str | None = None
     name: str
     category: Category
-    status: RestaurantStatus
-    price_level: int | None
-    location: str | None
-    memo: str | None
-    is_favorite: bool
-    last_visited_on: date | None
-    is_expiring: bool
-    consecutive_skips: int
-    skip_suggestion: bool
+    status: RestaurantStatus | None = None
+    price_level: int | None = None
+    location: str | None = None
+    memo: str | None = None
+    is_favorite: bool = False
+    last_visited_on: date | None = None
+    is_expiring: bool = False
+    consecutive_skips: int = 0
+    skip_suggestion: bool = False
 
 
 class RecommendationOut(BaseModel):

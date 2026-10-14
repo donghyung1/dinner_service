@@ -216,3 +216,6 @@ textarea { resize: vertical; }
 .list-pick .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .filter-detail { margin: .5rem 0; }
 .filter-detail summary { cursor: pointer; font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.location-bar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: 0 0 1rem; }
+.location-label { font-weight: 600; }
+.location-edit { display: grid; gap: .6rem; width: 100%; }

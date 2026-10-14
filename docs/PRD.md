@@ -6,9 +6,9 @@
 |------|------|
 | 제품명 | 오늘 뭐 먹지? |
 | 한 줄 소개 | 자주 가는 식당과 가보고 싶은 식당을 저장해 두고, 고민될 때 조건에 맞는 식당을 무작위로 추천받는 웹앱 |
-| 문서 버전 | v0.8 |
+| 문서 버전 | v0.9 |
 | 작성일 | 2026-10-14 |
-| 상태 | 초안 (v0.2: 배포 방식 직접 실행, Python 패키지 관리 uv 확정 / v0.3: 프론트엔드 React → Vanilla JS + Vite, 단일 사용자·내부망 확정 / v0.4: 단위 테스트 제외 / v0.5: 가중치 추천, 넘긴 기록, 가보고 싶음 유통기한, 운명·토너먼트 모드, 카테고리 공백 알림, 월간 회고 추가 / v0.6: 공공데이터 상가정보 CSV 임포트와 식당 추가 화면 검색 추가 / v0.7: 동네 식당 둘러보기 추가 / v0.8: 내 식당과 동네 식당을 한 목록으로 통합) |
+| 상태 | 초안 (v0.2: 배포 방식 직접 실행, Python 패키지 관리 uv 확정 / v0.3: 프론트엔드 React → Vanilla JS + Vite, 단일 사용자·내부망 확정 / v0.4: 단위 테스트 제외 / v0.5: 가중치 추천, 넘긴 기록, 가보고 싶음 유통기한, 운명·토너먼트 모드, 카테고리 공백 알림, 월간 회고 추가 / v0.6: 공공데이터 상가정보 CSV 임포트와 식당 추가 화면 검색 추가 / v0.7: 동네 식당 둘러보기 추가 / v0.8: 내 식당과 동네 식당을 한 목록으로 통합 / v0.9: 내 위치 기반 추천) |
 | 기술 스택 | Vanilla JS + Vite (프레젠테이션, UI 프레임워크 미사용) / FastAPI (애플리케이션) / MariaDB (데이터) |
 | 실행 방식 | 직접 실행 (컨테이너·systemd 미사용), 백엔드 Python 환경은 uv로 관리 |
 
@@ -25,6 +25,7 @@
 | v0.7.1 | 2026-10-14 | 상단 "둘러보기" 메뉴를 "식당"에 통합: 식당 화면에 탭(내 식당 `#/restaurants` / 동네에서 찾기 `#/restaurants/explore`)을 두고, 예전 `#/explore`는 리다이렉트 |
 | v0.7.2 | 2026-10-14 | 상단 "회고" 메뉴를 "기록"에 통합: 기록 화면에 탭(방문 기록 `#/visits` / 월간 회고 `#/visits/stats`)을 두고, 예전 `#/stats`는 리다이렉트 |
 | v0.8 | 2026-10-14 | 식당 화면의 탭("내 식당" / "동네에서 찾기")을 없애고 **하나의 화면·하나의 목록**으로 통합(M8): 필터 하나로 내 식당 + 공공데이터 식당을 이어서 보여주고, 공공데이터 항목은 [추가]로 바로 내 식당이 된다. 통합 API `GET /restaurants/search`·`/restaurants/search/random`(7.2.5)이 `/places/browse`·`/places/random`을 대체(삭제). FR-90~96을 FR-90~97로 개정. 예전 `#/restaurants/explore`·`#/explore`는 `#/restaurants`로 리다이렉트. 스키마 변경 없음 |
+| v0.9 | 2026-10-14 | 「내 위치」 추가(M9): 사용자가 동네(예: 강남구 역삼동)를 정하면 추천이 그 동네의 내 식당 + 공공데이터 동네 식당 중에서 나온다. FR-100~106(5.13), `/recommendations/random`·`/candidates`에 `sigungu`·`dong` 파라미터와 `source`·`place_no` 응답 필드, `GET /places/regions?group=true`(동 그룹). 위치는 localStorage만 사용, **스키마 변경 없음** |
 
 본 문서는 기획 초안을 바탕으로 MVP 범위의 요구사항, 데이터 모델, API, 화면, 아키텍처, 일정을 정의한다. 구현은 `CLAUDE.md`의 3티어 분리 원칙을 따른다.
 
@@ -405,6 +406,25 @@ uv run python -m app.scripts.import_places <csv경로> [--sido 서울특별시] 
 - 추천은 `places` 전체에서 균등 무작위이며 5.4의 가중치·최근 방문 제외 규칙과 무관하다.
 - **수용 기준**: 시군구→동 선택으로 목록이 좁혀지고 총 건수·더 보기가 맞는다. [내 목록에 추가] 후 같은 항목이 배지로 바뀌고 `restaurants`에 `WISHLIST`+`place_no`로 1건만 생긴다. 추천은 기본에서 등록된 곳을 뽑지 않고, 후보가 없으면 404를 안내로 처리한다. 새로고침 후 필터가 유지된다.
 
+### 5.13 내 위치 기반 추천 (v0.9)
+
+추천 화면(`#/`)에서 "내 위치"를 정하면 추천 후보가 그 동네의 **내 식당(`restaurants`) + 공공데이터 동네 식당(`places`)**으로 바뀐다. 위치가 없으면 5.4의 기존 동작(내 식당만)과 완전히 같다. 로그인이 없으므로 위치는 브라우저 `localStorage`(`dinner.location` = `{sigungu, dong}`)에만 저장하며 서버 저장·새 테이블은 없다.
+
+| ID | 기능 | 설명 | 우선순위 |
+|----|------|------|----------|
+| FR-100 | 위치 설정 | 추천 화면 상단에 "📍 강남구 역삼동 [변경]"을 표시한다. 미설정이면 "위치를 정하면 근처 식당을 추천해요 [위치 정하기]". 변경은 시군구 select(`GET /places/regions`) → 동 select(`GET /places/regions?sigungu=&group=true`, "동 전체" 포함)이며 [저장] [취소] [위치 해제]가 있다. 시군구만 고르면 동 = 전체. | P1 |
+| FR-101 | 동 그룹 | 행정동("역삼1동", "역삼2동", "성수1가2동")을 어간으로 묶은 **동 그룹**("역삼동", "성수동")을 위치 선택지로 제공한다. 묶음 규칙은 백엔드 한 곳(`app/core/region.py`)에 둔다: `N가`·숫자·`·`를 지우고 끝의 "동"/"가"를 뗀 어간 + "동"(어간이 2자 미만이면 원래 이름 유지). | P1 |
+| FR-102 | 후보 구성 | 위치가 있으면 후보 = 그 지역의 내 식당(5.4 필터·최근 방문 제외 그대로) + 그 지역 `places`(카테고리 필터 적용). 이미 내 식당에 `place_no`로 연결된 장소는 중복이므로 제외한다. 상태·가격대·즐겨찾기 필터가 켜져 있거나 [미뤄둔 곳 뽑기]이면 `places`는 제외한다(5.12 FR-92와 같은 규칙: 내 식당 전용 속성). | P1 |
+| FR-103 | 지역 판정 | "근처" = **선택한 동 하나**다(거리·좌표 계산 없음). `places`는 `sigungu`와 `dong`이 그룹에 속한 행정동 전체로, 내 식당은 5.12의 근사 판정(`place_no` 연결 시 `places`로 정확히, 아니면 `location` LIKE와 동 어간 비교)으로 판정한다. 동 그룹이 아니라 행정동 이름("역삼1동")을 줘도 같은 그룹으로 해석한다. | P1 |
+| FR-104 | 가중치·표본 | 내 식당은 5.4.1 공식 그대로. `places`는 방문·넘김 기록이 없으므로 가중치 1.0(보너스·감점 없는 기본값). `places`는 한 동에 수천 건이라 전부 섞으면 내 식당이 묻히므로 DB에서 `ORDER BY RAND()`로 **무작위 표본 `clamp(내 식당 후보 수 × 2, 10, 50)`건**만 후보에 넣는다(내 식당 후보가 0이면 10건). `candidate_count`는 표본이 아니라 `내 식당 후보 수 + 지역 내 places 전체 건수`다. | P1 |
+| FR-105 | 결과 표시 | 결과가 동네 식당이면 "동네 식당(공공데이터)" 배지, 주소, [내 식당에 추가](5.11.4 채움 규칙, 상태 `WISHLIST`, `place_no` 연결)를 보여준다. [여기로 갈래요]는 먼저 내 식당으로 추가한 뒤 방문을 기록한다. [다시 뽑기]는 직전 결과를 제외(`exclude_id`/`exclude_place_no`)하며, 넘김 기록(`POST /recommendations/skips`)은 내 식당에만 남긴다. 운명 모드·토너먼트 모드도 위치 조건을 따르고 동네 식당 카드에는 상세 링크 대신 [내 식당에 추가]가 붙는다. | P1 |
+| FR-106 | 후보 없음 | 후보가 0이면 기존처럼 `404 NO_CANDIDATES`. 위치가 있으면 화면에 "강남구 역삼동에 조건에 맞는 식당이 없어요"와 위치를 넓히거나 해제하라는 안내를 보인다. | P1 |
+
+- **비목표**: 거리·좌표 기반 근처 판정(반경, 인접 동 포함)은 하지 않는다. 동 단위 지역 일치만 쓴다. 브라우저 위치 정보(GPS)도 쓰지 않는다. 식당 목록(`#/restaurants`)의 기본 지역으로 내 위치를 쓰는 것은 하지 않는다(기존 필터 동작 유지).
+- **스키마 변경 없음**: `places`의 `sido`/`sigungu`/`dong`과 기존 `idx_places_region` 인덱스를 그대로 쓴다.
+- 이 기능이 쓰는 `places`가 비어 있으면(임포트 전) 위치를 정해도 내 식당만 후보가 된다.
+- **수용 기준**: 위치 없이 호출한 추천은 변경 전과 같다. `dong=역삼동`이면 `places`의 역삼1·2동이 모두 후보이고 내 식당이 섞여 나올 수 있다. `sigungu`만 주면 시군구 전체. 상태 필터를 걸면 `places`가 사라진다. 없는 동은 404 `NO_CANDIDATES`. `/places/regions?sigungu=강남구&group=true`는 "역삼동 2290"처럼 합산된 그룹 목록을 준다. 기존 `/restaurants/search?dong=역삼1동`은 그대로 동작한다.
+
 ---
 
 ## 6. 데이터 모델
@@ -549,6 +569,9 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 | exclude_id | int | 없음 | 직전 추천 결과 제외 (다시 뽑기용) |
 | weighted | bool | true | (v0.5) true면 5.4.1 공식의 가중 추첨, false면 균등 추첨 |
 | stale_wishlist | bool | false | (v0.5) true면 `is_expiring`(곧 잊혀짐) 식당만 후보로 한다(FR-56) |
+| sigungu | string | 없음 | (v0.9) 내 위치의 시군구. 있으면 그 지역의 내 식당 + 공공데이터 식당이 후보(5.13) |
+| dong | string | 없음 | (v0.9) 내 위치의 동. 동 그룹("역삼동")이나 행정동("역삼1동") 모두 가능. 비우면 시군구 전체 |
+| exclude_place_no | string | 없음 | (v0.9) 직전 결과가 동네 식당일 때 제외(다시 뽑기용) |
 
 응답 200 예시:
 
@@ -572,6 +595,7 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 }
 ```
 
+- (v0.9) 응답의 추천 항목에는 `source`(`"mine"` | `"place"`)와 `place_no`가 추가된다. 위치(`sigungu`/`dong`)가 있을 때만 `"place"`가 나올 수 있으며, 그 경우 `id`·`status`·`price_level`·`memo`는 `null`, `is_favorite`는 `false`, `name`은 상호명+지점명, `location`은 도로명(없으면 지번) 주소다. `candidate_count`는 FR-104 참고. `GET /recommendations/candidates`도 같은 `sigungu`·`dong` 파라미터와 항목 형식을 쓴다.
 - 후보가 없으면 `404`와 `NO_CANDIDATES` 코드를 반환한다. 프론트엔드는 이를 안내 메시지로 표시한다.
 - 추천 결과는 서버에 저장하지 않는다(추천은 상태 변경이 없는 GET). 수락 시점에 `POST /visits`로 기록한다.
 - 선택 로직은 백엔드 서비스 계층에서 구현한다(필터링 후 `weighted=true`면 5.4.1 공식의 가중 추첨, `false`면 `random.choice`).
@@ -667,6 +691,8 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 - 결과가 없으면 `200`과 빈 `items`다(404 아님). 읽기 전용 GET이며 쓰기 부작용이 없다.
 - `POST /restaurants`와 `PUT /restaurants/{id}`는 `place_no`(선택, 최대 30자)를 받아 저장한다. 존재하지 않는 `place_no`도 오류로 처리하지 않는다(FK 없음, 카탈로그 재임포트와 독립). 응답의 식당 객체에도 `place_no`를 포함한다. `PUT`에서 `place_no`를 생략하면 기존 값을 유지한다.
 
+(v0.9) `GET /api/v1/places/regions?sigungu=강남구&group=true`: `group=true`이고 `sigungu`가 있으면 동 목록을 행정동 대신 **동 그룹**(5.13 FR-101)으로 합산해 가나다순으로 돌려준다(`{"name":"역삼동","count":2290}`). `group`을 생략하면 기존 응답 그대로다.
+
 ### 7.2.5 식당 통합 검색 API (v0.8)
 
 내 식당과 공공데이터 식당을 한 목록으로 반환하는 읽기 전용 GET 두 개(`/api/v1/restaurants/search`, `/api/v1/restaurants/search/random`)다. 라우트는 `/restaurants/{id}`보다 먼저 선언한다. 기존 `GET /restaurants`(7.1), `GET /places?q=`(7.2.4), `GET /places/regions`는 그대로 유지한다. v0.7의 `GET /places/browse`·`/places/random`은 이 API로 대체되어 삭제했다. 스키마 변경이 없어 마이그레이션은 추가하지 않는다.
@@ -700,6 +726,7 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 | 화면 | 경로 | 주요 요소 |
 |------|------|-----------|
 | 메인 / 추천 | `/` | 조건 패널(카테고리 칩, 가격대 칩, 상태 토글, 최근 방문 제외 일수 입력), [추천받기] 버튼, 결과 카드, [다시 뽑기], [여기로 갈래요], 후보 없음 안내 |
+| 메인 / 추천 · 내 위치 (v0.9) | `/` | 위 구성에 더해 상단 위치 줄("📍 강남구 역삼동 [변경]" 또는 "[위치 정하기]"), 시군구→동(그룹) select, [위치 해제]. 위치가 있으면 결과 카드에 동네 식당 배지·주소·[내 식당에 추가] (5.13) |
 | 식당 (통합 목록, v0.8) | `/restaurants` | 키워드 검색창, 카테고리 칩, 시군구→동 select, 접이식 상세 필터(상태·가격대·즐겨찾기·정렬), [이 조건에서 추천받기]와 "내 식당만", 요약("내 식당 n곳 · 동네 식당 m곳"), 내 식당 항목(배지·즐겨찾기 별·상세 링크)과 이어지는 공공데이터 항목([추가]), [더 보기], [+ 식당 추가] |
 | 식당 상세 | `/restaurants/:id` | 전체 정보, 최근 방문 이력, [수정], [삭제], [방문 기록 추가] |
 | 식당 등록·수정 | `/restaurants/new`, `/restaurants/:id/edit` | 입력 폼(이름, 카테고리, 상태, 가격대, 위치, 메모, 즐겨찾기), 검증 오류 표시, [저장], [취소]. v0.6: 등록 화면 상단에 "공공데이터에서 찾기" 검색 |
@@ -854,6 +881,7 @@ backend/app/
 
 | **M7 동네 식당 둘러보기 (v0.7)** | 7-a 백엔드: `GET /places/regions`·`/browse`·`/random`. 7-b 프론트엔드: `#/explore` 화면, 내비게이션, 해시 쿼리 필터, 바로 추가, 조건 내 추천, 출처 문구 | 갱신된 FastAPI 앱, Vanilla JS 앱, PRD·README | FR-90~96의 수용 기준을 `curl`(regions/browse/random, 기존 `GET /places?q=`)과 브라우저로 수동 확인, 등록 후 `already_registered` 반영, `npm run build` 성공, 번들에 DB 접속정보 없음 |
 | **M8 식당 통합 목록 (v0.8)** | 8-a 백엔드: `GET /restaurants/search`·`/search/random`(내 식당 지역 근사 판정, 공공데이터 중복 제외), `/places/browse`·`/places/random` 삭제. 8-b 프론트엔드: `#/restaurants` 통합 화면(탭 제거), 상세 필터, 바로 추가, 조건 내 추천, 예전 경로 리다이렉트 | 갱신된 FastAPI 앱, Vanilla JS 앱, PRD·README | FR-90~97의 수용 기준을 `curl`(조건 없음·지역·상세 필터·offset 경계·random·mine_only·404, 추가 후 kind 전환)과 브라우저로 수동 확인, 기존 `GET /restaurants`·`/places`·`/recommendations` 정상, `npm run build` 성공 |
+| **M9 내 위치 (v0.9)** | 9-a 백엔드: `core/region.py` 동 그룹 규칙, `/places/regions?group=true`, `/recommendations/random`·`/candidates`의 `sigungu`·`dong`·`exclude_place_no`와 `source`·`place_no` 응답, places 무작위 표본 후보. 9-b 프론트엔드: 위치 바(`dinner.location`), 쿼리 연동, 동네 식당 결과·토너먼트 카드, 위치 언급 빈 상태 | 갱신된 FastAPI 앱, Vanilla JS 앱, PRD | FR-100~106의 수용 기준을 `curl`(위치 없음 회귀, 동·시군구·카테고리·상태 조합, 없는 동 404, 그룹 regions, 기존 `/restaurants/search` 회귀)과 `npm run build`로 확인. 스키마 변경 없음 |
 
 산정 일정은 열린 질문 확정 후 정한다. 대략 M1 0.5주, M2 1주, M3 1주, M4 1주, M5 1.5주(5-a 0.75주, 5-b 0.75주), M6 1주(6-a 0.5주, 6-b 0.5주), M7 0.5주, M8 0.5주를 가정한다. 5-a와 5-b, 6-a와 6-b는 API 계약(7장)이 고정되어 있으므로 병렬 진행할 수 있다.
 

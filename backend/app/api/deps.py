@@ -23,7 +23,7 @@ def get_visit_service(db: Session = Depends(get_db)) -> VisitService:
 
 
 def get_recommendation_service(db: Session = Depends(get_db)) -> RecommendationService:
-    return RecommendationService(RestaurantRepository(db), SkipRepository(db))
+    return RecommendationService(RestaurantRepository(db), SkipRepository(db), PlaceRepository(db))
 
 
 def get_stats_service(db: Session = Depends(get_db)) -> StatsService:

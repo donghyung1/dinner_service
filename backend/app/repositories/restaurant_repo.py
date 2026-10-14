@@ -86,16 +86,17 @@ def _dong_stem(dong: str) -> str | None:
     return stem if len(stem) >= 2 else None
 
 
-def _region_clause(sigungu: str | None, dong: str | None):
+def _region_clause(sigungu: str | None, dong: str | None, dongs: Sequence[str] | None = None):
     """내 식당의 지역 판정(근사). 카탈로그에 연결된 식당은 places 의 시군구/동으로 정확히,
-    연결되지 않은 식당은 location 문자열에 지역명이 포함되는지로 판정한다."""
+    연결되지 않은 식당은 location 문자열에 지역명이 포함되는지로 판정한다.
+    dongs 가 있으면(동 그룹) 연결 식당은 places.dong 이 그 행정동들 중 하나인지로 판정한다."""
     linked_cond = [Place.place_no == Restaurant.place_no]
     text_cond = []
     if sigungu:
         linked_cond.append(Place.sigungu == sigungu)
         text_cond.append(Restaurant.location.like(_like(sigungu), escape="\\"))
     if dong:
-        linked_cond.append(Place.dong == dong)
+        linked_cond.append(Place.dong.in_(dongs) if dongs is not None else Place.dong == dong)
         names = [dong] + ([s] if (s := _dong_stem(dong)) else [])
         text_cond.append(or_(*(Restaurant.location.like(_like(n), escape="\\") for n in names)))
     linked_any = exists().where(Place.place_no == Restaurant.place_no).correlate(Restaurant)
@@ -115,9 +116,10 @@ def _apply_filters(
     is_favorite: bool | None = None,
     sigungu: str | None = None,
     dong: str | None = None,
+    dongs: Sequence[str] | None = None,
 ) -> Select:
     if sigungu or dong:
-        stmt = stmt.where(_region_clause(sigungu, dong))
+        stmt = stmt.where(_region_clause(sigungu, dong, dongs))
     if q:
         like = _like(q)
         stmt = stmt.where(or_(Restaurant.name.like(like, escape="\\"), Restaurant.memo.like(like, escape="\\")))
@@ -169,10 +171,16 @@ class RestaurantRepository:
         status=None,
         is_favorite: bool | None = None,
         expiring_before: datetime | None = None,
+        sigungu: str | None = None,
+        dong: str | None = None,
+        dongs: Sequence[str] | None = None,
     ) -> list[RestaurantRow]:
-        """추천 후보 목록. expiring_before가 있으면 '곧 잊혀짐' 식당만."""
+        """추천 후보 목록. expiring_before가 있으면 '곧 잊혀짐' 식당만. 지역(내 위치)이 있으면 그 동네만."""
         stmt = _apply_filters(
             _row_select(),
+            sigungu=sigungu,
+            dong=dong,
+            dongs=dongs,
             categories=categories,
             price_levels=price_levels,
             status=status,

@@ -34,5 +34,7 @@ def _clean(v: str | None) -> str | None:
 def list_regions(
     svc: Annotated[PlaceService, Depends(get_place_service)],
     sigungu: Annotated[str | None, Query(max_length=30)] = None,
+    group: bool = False,
 ):
-    return svc.regions(sigungu=_clean(sigungu))
+    """group=true 이고 sigungu 가 있으면 동을 '역삼동' 같은 동 그룹으로 묶어 돌려준다."""
+    return svc.regions(sigungu=_clean(sigungu), group=group)
