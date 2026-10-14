@@ -93,7 +93,7 @@ npm run dev                 # 개발 서버 :5173 (/api 는 백엔드로 프록�
 npm run build && npm run preview   # dist/ 빌드 후 :4173 에서 서빙 (CORS 에 해당 Origin 추가 필요)
 ```
 
-해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` `#/stats` (식당 > 동네에서 찾기는 `#/restaurants/explore`, 필터는 `?sigungu=&dong=&category=&q=`; 예전 `#/explore`는 여기로 리다이렉트).
+해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` (기록 > 월간 회고는 `#/visits/stats`; 예전 `#/stats`는 여기로 리다이렉트) (식당 > 동네에서 찾기는 `#/restaurants/explore`, 필터는 `?sigungu=&dong=&category=&q=`; 예전 `#/explore`는 여기로 리다이렉트).
 구조: `src/{main.js, router.js, api/client.js, views/, components/, styles/}`.
 
 ## 환경변수

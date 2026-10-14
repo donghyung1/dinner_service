@@ -36,6 +36,15 @@ export function restaurantTabs(active) {
   ]);
 }
 
+export function visitTabs(active) {
+  const tab = (key, href, text) =>
+    h('a', { class: 'tab', href, ...(active === key ? { 'aria-current': 'page' } : {}) }, text);
+  return h('nav', { class: 'tabs', 'aria-label': '기록 보기' }, [
+    tab('list', '#/visits', '방문 기록'),
+    tab('stats', '#/visits/stats', '월간 회고'),
+  ]);
+}
+
 export function badge(text, kind = '') {
   return h('span', { class: `badge ${kind}`.trim() }, text);
 }

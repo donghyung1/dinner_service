@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { emptyState, errorState, spinner } from '../components/ui.js';
+import { emptyState, errorState, spinner, visitTabs } from '../components/ui.js';
 import { categoryLabel } from '../constants.js';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -114,7 +114,8 @@ export function statsView(outlet, _params, ctx) {
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
-      h('h1', {}, '월간 회고'),
+      h('div', { class: 'page-head' }, h('h1', {}, '기록')),
+      visitTabs('stats'),
       h('div', { class: 'month-nav' }, [prev, title, next]),
       body,
     ]),

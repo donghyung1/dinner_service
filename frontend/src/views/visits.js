@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { confirmDialog, emptyState, errorState, field, pager, spinner } from '../components/ui.js';
+import { confirmDialog, emptyState, errorState, field, pager, spinner, visitTabs } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
 
 const LIMIT = 20;
@@ -96,7 +96,8 @@ export function visitsView(outlet, _params, ctx) {
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
-      h('h1', {}, '방문 기록'),
+      h('div', { class: 'page-head' }, h('h1', {}, '기록')),
+      visitTabs('list'),
       h('form', { class: 'panel', onSubmit: apply }, [
         h('div', { class: 'row-fields' }, [fF, tF]),
         h('div', { class: 'actions' }, [

@@ -18,14 +18,15 @@ const routes = [
   { path: '/restaurants/:id/edit', name: 'restaurants', view: restaurantFormView },
   { path: '/restaurants/:id', name: 'restaurants', view: restaurantDetailView },
   { path: '/visits', name: 'visits', view: visitsView },
-  { path: '/stats', name: 'stats', view: statsView },
-  { path: '/explore', name: 'restaurants', view: legacyExploreRedirect },
+  { path: '/visits/stats', name: 'visits', view: statsView },
+  { path: '/stats', name: 'visits', view: () => redirectTo('/visits/stats') },
+  { path: '/explore', name: 'restaurants', view: () => redirectTo('/restaurants/explore') },
 ];
 
-// 예전 '#/explore' 링크 호환: 쿼리를 보존한 채 새 경로로 교체한다.
-function legacyExploreRedirect() {
+// 예전 '#/explore', '#/stats' 링크 호환: 쿼리를 보존한 채 새 경로로 교체한다.
+function redirectTo(path) {
   const q = window.location.hash.split('?')[1];
-  window.location.replace(`#/restaurants/explore${q ? `?${q}` : ''}`);
+  window.location.replace(`#${path}${q ? `?${q}` : ''}`);
 }
 
 function notFound(outlet) {
