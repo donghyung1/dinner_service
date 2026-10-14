@@ -1,6 +1,7 @@
 import { api } from '../api/client.js';
 import { h, nextId } from './dom.js';
 import { badge } from './ui.js';
+import { icon } from './icon.js';
 import { categoryLabel, DATA_SOURCE_NOTICE } from '../constants.js';
 
 const DEBOUNCE_MS = 300;
@@ -19,7 +20,7 @@ export function placeFinder({ onSelect }) {
   const msg = h('p', { class: 'hint', id: `${inputId}-msg`, role: 'status', 'aria-live': 'polite' }, '2글자 이상 입력하면 공공데이터에서 찾아요. 직접 입력해도 돼요.');
   const list = h('ul', { class: 'place-results plain-list' });
   const box = h('section', { class: 'panel place-finder', 'aria-labelledby': `${inputId}-title` }, [
-    h('h2', { id: `${inputId}-title`, class: 'place-title' }, '공공데이터에서 찾기'),
+    h('h2', { id: `${inputId}-title`, class: 'place-title' }, [icon('landmark'), '공공데이터에서 찾기']),
     h('label', { for: inputId, class: 'sr-only' }, '공공데이터 식당 검색'),
     input,
     msg,
@@ -36,8 +37,8 @@ export function placeFinder({ onSelect }) {
         const btn = h('button', { type: 'button', class: 'place-item' }, [
           h('span', { class: 'place-name' }, p.branch_name ? `${p.name} ${p.branch_name}` : p.name),
           h('span', { class: 'badges' }, [
-            badge(categoryLabel(p.category), 'badge-cat'),
-            p.already_registered && badge('등록됨', 'badge-regular'),
+            badge(categoryLabel(p.category), 'badge-cat', { icon: 'utensils' }),
+            p.already_registered && badge('등록됨', 'badge-regular', { icon: 'circle-check', iconOnly: true }),
           ]),
           h('span', { class: 'muted small place-addr' }, p.location || '주소 정보 없음'),
         ]);

@@ -2,6 +2,7 @@ import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { emptyState, errorState, spinner, visitTabs } from '../components/ui.js';
 import { categoryLabel } from '../constants.js';
+import { icon, iconButton, iconLabel } from '../components/icon.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 const monthOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -22,8 +23,8 @@ export function statsView(outlet, _params, ctx) {
   let seq = 0;
   const body = h('div', { 'aria-live': 'polite' });
 
-  const prev = h('button', { type: 'button', class: 'btn', onClick: () => go(-1) }, '← 이전 달');
-  const next = h('button', { type: 'button', class: 'btn', onClick: () => go(1) }, '다음 달 →');
+  const prev = iconButton({ name: 'chevron-left', label: '이전 달', onClick: () => go(-1) });
+  const next = iconButton({ name: 'chevron-right', label: '다음 달', onClick: () => go(1) });
   const title = h('h2', { class: 'month-title' });
 
   function go(delta) {
@@ -33,9 +34,9 @@ export function statsView(outlet, _params, ctx) {
     load();
   }
 
-  function stat(label, value, sub) {
+  function stat(label, value, sub, iconName) {
     return h('div', { class: 'card stat' }, [
-      h('p', { class: 'stat-label' }, label),
+      h('p', { class: 'stat-label' }, iconLabel(iconName, label)),
       h('p', { class: 'stat-value' }, value),
       sub && h('p', { class: 'muted small' }, sub),
     ]);
@@ -43,10 +44,10 @@ export function statsView(outlet, _params, ctx) {
 
   function render(d) {
     const total = d.total_visits ?? 0;
-    const skip = stat('넘긴 횟수', `${d.skip_count ?? 0}회`, '[다시 뽑기] 기준');
+    const skip = stat('넘긴 횟수', `${d.skip_count ?? 0}회`, '다시 뽑기 기준', 'skip');
     if (total === 0) {
       body.replaceChildren(
-        emptyState('이 달의 기록이 없어요', '추천을 받고 "여기로 갈래요"를 누르면 회고에 쌓여요.', h('a', { class: 'btn btn-primary', href: '#/' }, '추천받으러 가기')),
+        emptyState('이 달의 기록이 없어요', '추천 결과에서 체크(✓)를 누르면 회고에 쌓여요.', iconButton({ name: 'dices', label: '추천받으러 가기', text: '추천받으러 가기', href: '#/', cls: 'btn btn-primary' })),
         h('div', { class: 'stat-grid' }, skip),
       );
       return;
@@ -82,15 +83,15 @@ export function statsView(outlet, _params, ctx) {
 
     body.replaceChildren(
       h('div', { class: 'stat-grid' }, [
-        stat('총 방문', `${total}건`),
-        stat('추천 수락 비율', accValue, acc.accepted_count != null ? `추천으로 ${acc.accepted_count}건 / 전체 ${total}건` : undefined),
+        stat('총 방문', `${total}건`, undefined, 'footprints'),
+        stat('추천 수락 비율', accValue, acc.accepted_count != null ? `추천으로 ${acc.accepted_count}건 / 전체 ${total}건` : undefined, 'thumbs-up'),
         skip,
       ]),
-      h('h2', {}, '카테고리 분포'),
+      h('h2', {}, [icon('chart'), '카테고리 분포']),
       h('div', { class: 'card' }, bars),
-      h('h2', {}, '가장 많이 간 식당 TOP 3'),
+      h('h2', {}, [icon('trophy'), '가장 많이 간 식당 TOP 3']),
       rank,
-      h('h2', {}, '최장 연속 같은 카테고리'),
+      h('h2', {}, [icon('repeat'), '최장 연속 같은 카테고리']),
       h('div', { class: 'card' }, streak),
     );
   }
@@ -114,7 +115,7 @@ export function statsView(outlet, _params, ctx) {
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
-      h('div', { class: 'page-head' }, h('h1', {}, '기록')),
+      h('div', { class: 'page-head' }, h('h1', {}, [icon('notebook-pen', { size: '1.1em' }), '기록'])),
       visitTabs('stats'),
       h('div', { class: 'month-nav' }, [prev, title, next]),
       body,

@@ -1,6 +1,7 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { errorState, field, selectEl, spinner } from '../components/ui.js';
+import { icon, iconButton } from '../components/icon.js';
 import { showToast } from '../components/toast.js';
 import { navigate } from '../router.js';
 import { placeFinder } from '../components/placeFinder.js';
@@ -48,12 +49,12 @@ export function restaurantFormView(outlet, params, ctx) {
     const fav = h('input', { type: 'checkbox', id: 'is-fav', checked: r?.is_favorite });
 
     const F = {
-      name: field({ label: '이름', control: name, required: true }),
-      category: field({ label: '카테고리', control: category, required: true }),
-      status: field({ label: '상태', control: status, required: true }),
-      price_level: field({ label: '가격대', control: price }),
-      location: field({ label: '위치/주소', control: location, hint: '예: 역삼역 3번 출구 앞' }),
-      memo: field({ label: '메모', control: memo, hint: '최대 1000자' }),
+      name: field({ label: '이름', control: name, required: true, icon: 'utensils' }),
+      category: field({ label: '카테고리', control: category, required: true, icon: 'tag' }),
+      status: field({ label: '상태', control: status, required: true, icon: 'bookmark' }),
+      price_level: field({ label: '가격대', control: price, icon: 'wallet' }),
+      location: field({ label: '위치/주소', control: location, hint: '예: 역삼역 3번 출구 앞', icon: 'map-pin' }),
+      memo: field({ label: '메모', control: memo, hint: '최대 1000자', icon: 'note' }),
     };
     const dupWarn = h('p', { class: 'warn', role: 'status' });
     F.name.append(dupWarn);
@@ -62,7 +63,7 @@ export function restaurantFormView(outlet, params, ctx) {
     let placeNo = null;
     const placeNote = h('p', { class: 'hint place-linked', role: 'status' });
     const placeWarn = h('p', { class: 'warn', role: 'status' });
-    const unlink = h('button', { type: 'button', class: 'btn btn-link' }, '연결 해제');
+    const unlink = iconButton({ name: 'unlink', label: '연결 해제', cls: 'btn btn-link' });
     unlink.addEventListener('click', () => setPlace(null));
     const placeBar = h('div', { class: 'place-linkbar' }, [placeNote, unlink, placeWarn]);
     placeBar.hidden = true;
@@ -102,17 +103,17 @@ export function restaurantFormView(outlet, params, ctx) {
       }
     });
 
-    const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, '저장');
+    const submit = h('button', { type: 'submit', class: 'btn btn-primary', title: '저장' }, [icon('save'), h('span', {}, '저장')]);
     const formErr = h('p', { class: 'field-error', role: 'alert' });
 
     const form = h('form', { class: 'panel', novalidate: true }, [
       placeBar,
       F.name, F.category, F.status, F.price_level, F.location, F.memo,
-      h('div', { class: 'check' }, [fav, h('label', { for: 'is-fav' }, '즐겨찾기')]),
+      h('div', { class: 'check' }, [fav, h('label', { for: 'is-fav' }, [icon('star'), '즐겨찾기'])]),
       formErr,
       h('div', { class: 'actions' }, [
         submit,
-        h('a', { class: 'btn', href: editId ? `#/restaurants/${editId}` : '#/restaurants' }, '취소'),
+        iconButton({ name: 'x', label: '취소', href: editId ? `#/restaurants/${editId}` : '#/restaurants' }),
       ]),
     ]);
 

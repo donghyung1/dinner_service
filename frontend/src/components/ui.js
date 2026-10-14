@@ -1,6 +1,7 @@
 import { h, nextId } from './dom.js';
 import { api } from '../api/client.js';
 import { showToast } from './toast.js';
+import { icon, iconButton } from './icon.js';
 import { categoryLabel, priceLabel, statusLabel } from '../constants.js';
 
 export function spinner(label = '불러오는 중…') {
@@ -22,29 +23,36 @@ export function errorState(err, onRetry) {
   return h('div', { class: 'state state-error', role: 'alert' }, [
     h('p', { class: 'state-title' }, '문제가 생겼어요'),
     h('p', { class: 'muted' }, err?.message || '알 수 없는 오류'),
-    onRetry && h('button', { type: 'button', class: 'btn', onClick: onRetry }, '다시 시도'),
+    onRetry && iconButton({ name: 'rotate-cw', label: '다시 시도', onClick: onRetry }),
   ]);
 }
 
 export function visitTabs(active) {
-  const tab = (key, href, text) =>
-    h('a', { class: 'tab', href, ...(active === key ? { 'aria-current': 'page' } : {}) }, text);
+  const tab = (key, href, iconName, text) =>
+    h('a', { class: 'tab', href, 'aria-label': text, title: text, ...(active === key ? { 'aria-current': 'page' } : {}) }, icon(iconName));
   return h('nav', { class: 'tabs', 'aria-label': '기록 보기' }, [
-    tab('list', '#/visits', '방문 기록'),
-    tab('stats', '#/visits/stats', '월간 회고'),
+    tab('list', '#/visits', 'list', '방문 기록'),
+    tab('stats', '#/visits/stats', 'chart', '월간 회고'),
   ]);
 }
 
-export function badge(text, kind = '') {
-  return h('span', { class: `badge ${kind}`.trim() }, text);
+/** 배지. iconName 이 있으면 앞에 아이콘을 붙이고, iconOnly 면 글자는 sr-only + title 로만 둔다. */
+export function badge(text, kind = '', { icon: iconName, iconOnly = false } = {}) {
+  if (iconName && iconOnly) {
+    return h('span', { class: `badge badge-icon ${kind}`.trim(), title: text }, [icon(iconName), h('span', { class: 'sr-only' }, text)]);
+  }
+  return h('span', { class: `badge ${kind}`.trim() }, [iconName && icon(iconName), h('span', {}, text)]);
 }
 
 export function restaurantBadges(r) {
   return h('div', { class: 'badges' }, [
-    badge(categoryLabel(r.category), 'badge-cat'),
-    r.price_level != null && badge(priceLabel(r.price_level)),
-    badge(statusLabel(r.status), r.status === 'REGULAR' ? 'badge-regular' : 'badge-wish'),
-    r.is_expiring && badge('곧 잊혀짐', 'badge-expiring'),
+    badge(categoryLabel(r.category), 'badge-cat', { icon: 'utensils' }),
+    r.price_level != null && badge(priceLabel(r.price_level), 'badge-price', { icon: 'wallet' }),
+    badge(statusLabel(r.status), r.status === 'REGULAR' ? 'badge-regular' : 'badge-wish', {
+      icon: r.status === 'REGULAR' ? 'repeat' : 'bookmark',
+      iconOnly: true,
+    }),
+    r.is_expiring && badge('곧 잊혀짐', 'badge-expiring', { icon: 'hourglass', iconOnly: true }),
   ]);
 }
 
@@ -54,8 +62,9 @@ export function restaurantBadges(r) {
  */
 export function skipSuggestion(r, onDone) {
   if (!r.skip_suggestion) return null;
-  const del = h('button', { type: 'button', class: 'btn btn-danger-ghost', 'aria-label': `${r.name} 삭제` }, '삭제');
-  const keep = h('button', { type: 'button', class: 'btn', 'aria-label': `${r.name} 그대로 두기` }, '그대로 두기');
+  const del = iconButton({ name: 'trash', label: `${r.name} 삭제`, cls: 'btn btn-danger-ghost' });
+  del.title = '삭제';
+  const keep = iconButton({ name: 'check', label: `${r.name} 그대로 두기`, text: '그대로 두기' });
   const box = h('div', { class: 'suggest', role: 'group', 'aria-label': '목록 정리 제안' }, [
     h('p', { class: 'suggest-title' }, '목록에서 뺄까요?'),
     h('p', { class: 'muted small' }, `최근 ${r.consecutive_skips ?? 5}번 연속으로 넘겼어요.`),
@@ -97,7 +106,8 @@ export function skipSuggestion(r, onDone) {
 export function favoriteButton(r, onChange) {
   const btn = h('button', { type: 'button', class: 'fav' });
   const paint = () => {
-    btn.textContent = r.is_favorite ? '★' : '☆';
+    btn.replaceChildren(icon('star', { size: '1.5em' }));
+    btn.classList.toggle('is-on', Boolean(r.is_favorite));
     btn.setAttribute('aria-pressed', String(r.is_favorite));
     btn.setAttribute('aria-label', `${r.name} 즐겨찾기`);
     btn.title = r.is_favorite ? '즐겨찾기 해제' : '즐겨찾기 추가';
@@ -145,13 +155,13 @@ export function chipGroup({ legend, name, options, type = 'checkbox', selected =
 }
 
 /** 라벨이 붙은 입력 필드. 오류 메시지는 aria-describedby 로 연결된다. */
-export function field({ label, control, hint, required }) {
+export function field({ label, control, hint, required, icon: iconName }) {
   const id = control.id || nextId('f');
   control.id = id;
   const err = h('p', { class: 'field-error', id: `${id}-err`, role: 'alert' });
   control.setAttribute('aria-describedby', `${id}-err`);
   const wrap = h('div', { class: 'field' }, [
-    h('label', { for: id }, [label, required && h('span', { class: 'req', 'aria-hidden': 'true' }, ' *')]),
+    h('label', { for: id }, [iconName && icon(iconName), label, required && h('span', { class: 'req', 'aria-hidden': 'true' }, ' *')]),
     control,
     hint && h('p', { class: 'hint' }, hint),
     err,
@@ -177,8 +187,11 @@ export function confirmDialog({ title, message, confirmText = '확인', danger =
   return new Promise((resolve) => {
     const prev = document.activeElement;
     const titleId = nextId('dlg');
-    const ok = h('button', { type: 'button', class: danger ? 'btn btn-danger' : 'btn btn-primary' }, confirmText);
-    const cancel = h('button', { type: 'button', class: 'btn' }, '취소');
+    const ok = h('button', { type: 'button', class: danger ? 'btn btn-danger' : 'btn btn-primary' }, [
+      icon(danger ? 'trash' : 'check'),
+      h('span', {}, confirmText),
+    ]);
+    const cancel = iconButton({ name: 'x', label: '취소' });
     const box = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId }, [
       h('h2', { id: titleId }, title),
       h('p', {}, message),
@@ -213,8 +226,8 @@ export function pager({ total, limit, offset, onPage }) {
   const page = Math.floor(offset / limit) + 1;
   const pages = Math.max(1, Math.ceil(total / limit));
   return h('nav', { class: 'pager', 'aria-label': '페이지 이동' }, [
-    h('button', { type: 'button', class: 'btn', disabled: page <= 1, onClick: () => onPage(offset - limit) }, '이전'),
-    h('span', { 'aria-live': 'polite' }, `${page} / ${pages} (총 ${total}건)`),
-    h('button', { type: 'button', class: 'btn', disabled: page >= pages, onClick: () => onPage(offset + limit) }, '다음'),
+    iconButton({ name: 'chevron-left', label: '이전', disabled: page <= 1, onClick: () => onPage(offset - limit) }),
+    h('span', { 'aria-live': 'polite', title: `총 ${total}건` }, [`${page} / ${pages}`, h('span', { class: 'sr-only' }, ` (총 ${total}건)`)]),
+    iconButton({ name: 'chevron-right', label: '다음', disabled: page >= pages, onClick: () => onPage(offset + limit) }),
   ]);
 }

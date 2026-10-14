@@ -1,11 +1,12 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { confirmDialog, errorState, favoriteButton, field, restaurantBadges, skipSuggestion, spinner } from '../components/ui.js';
+import { badge, confirmDialog, errorState, favoriteButton, field, restaurantBadges, skipSuggestion, spinner } from '../components/ui.js';
+import { icon, iconButton, iconLabel } from '../components/icon.js';
 import { showToast } from '../components/toast.js';
 import { navigate } from '../router.js';
 import { todayISO } from '../constants.js';
 
-const SOURCE = { RECOMMENDATION: '추천', MANUAL: '직접 기록' };
+const SOURCE = { RECOMMENDATION: ['추천', 'dices'], MANUAL: ['직접 기록', 'pencil'] };
 
 export function restaurantDetailView(outlet, { id }, ctx) {
   const root = h('section', { class: 'page' });
@@ -22,7 +23,7 @@ export function restaurantDetailView(outlet, { id }, ctx) {
         e.status === 404
           ? h('div', { class: 'state state-empty' }, [
               h('p', { class: 'state-title' }, '식당을 찾을 수 없어요'),
-              h('a', { class: 'btn', href: '#/restaurants' }, '목록으로'),
+              iconButton({ name: 'arrow-left', label: '목록으로', href: '#/restaurants' }),
             ])
           : errorState(e, load),
       );
@@ -35,7 +36,7 @@ export function restaurantDetailView(outlet, { id }, ctx) {
       h('li', {}, [
         h('strong', {}, v.visited_on),
         ' ',
-        h('span', { class: 'badge' }, SOURCE[v.source] || v.source),
+        SOURCE[v.source] ? badge(SOURCE[v.source][0], '', { icon: SOURCE[v.source][1], iconOnly: true }) : badge(v.source),
         v.note && h('span', { class: 'muted' }, ` · ${v.note}`),
       ]),
     ));
@@ -44,8 +45,8 @@ export function restaurantDetailView(outlet, { id }, ctx) {
   function visitForm(r) {
     const date = h('input', { type: 'date', value: todayISO(), max: '9999-12-31', required: true });
     const note = h('input', { type: 'text', maxlength: 255, placeholder: '한 줄 메모 (선택)' });
-    const dateF = field({ label: '방문일', control: date });
-    const noteF = field({ label: '메모', control: note });
+    const dateF = field({ label: '방문일', control: date, icon: 'calendar' });
+    const noteF = field({ label: '메모', control: note, icon: 'note' });
     const form = h('form', { class: 'panel', onSubmit: async (e) => {
       e.preventDefault();
       dateF.setError('');
@@ -59,15 +60,15 @@ export function restaurantDetailView(outlet, { id }, ctx) {
         else showToast(err.message, 'error');
       }
     } }, [
-      h('h3', {}, '방문 기록 추가'),
+      h('h3', {}, [icon('plus'), '방문 기록 추가']),
       h('div', { class: 'row-fields' }, [dateF, noteF]),
-      h('button', { class: 'btn', type: 'submit' }, '기록하기'),
+      h('button', { class: 'btn', type: 'submit', 'aria-label': '기록하기', title: '기록하기' }, [icon('check'), h('span', {}, '기록하기')]),
     ]);
     return form;
   }
 
   function render(r) {
-    const del = h('button', { type: 'button', class: 'btn btn-danger-ghost' }, '삭제');
+    const del = iconButton({ name: 'trash', label: '삭제', cls: 'btn btn-danger-ghost' });
     del.addEventListener('click', async () => {
       const ok = await confirmDialog({
         title: '식당을 삭제할까요?',
@@ -85,22 +86,22 @@ export function restaurantDetailView(outlet, { id }, ctx) {
       }
     });
     root.replaceChildren(
-      h('p', {}, h('a', { href: '#/restaurants' }, '← 목록')),
-      h('article', { class: 'card detail' }, [
+      h('p', {}, iconButton({ name: 'arrow-left', label: '목록', href: '#/restaurants', cls: 'btn btn-ghost' })),
+      h('article', { class: 'detail' }, [
         h('div', { class: 'page-head' }, [h('h1', {}, r.name), favoriteButton(r)]),
         restaurantBadges(r),
         skipSuggestion(r, (kind) => kind === 'deleted' && navigate('/restaurants')),
         h('dl', { class: 'facts' }, [
-          h('dt', {}, '위치'), h('dd', {}, r.location || '-'),
-          h('dt', {}, '메모'), h('dd', { class: 'pre' }, r.memo || '-'),
-          h('dt', {}, '마지막 방문'), h('dd', {}, r.last_visited_on || '-'),
+          h('dt', {}, iconLabel('map-pin', '위치')), h('dd', {}, r.location || '-'),
+          h('dt', {}, iconLabel('note', '메모')), h('dd', { class: 'pre' }, r.memo || '-'),
+          h('dt', {}, iconLabel('calendar', '마지막 방문')), h('dd', {}, r.last_visited_on || '-'),
         ]),
         h('div', { class: 'actions' }, [
-          h('a', { class: 'btn btn-primary', href: `#/restaurants/${r.id}/edit` }, '수정'),
+          iconButton({ name: 'pencil', label: '수정', href: `#/restaurants/${r.id}/edit`, cls: 'btn btn-primary' }),
           del,
         ]),
       ]),
-      h('h2', {}, '최근 방문'),
+      h('h2', {}, [icon('history'), '최근 방문']),
       visitList(r),
       visitForm(r),
     );

@@ -2,6 +2,8 @@ import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { confirmDialog, emptyState, errorState, field, pager, spinner, visitTabs } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
+import { badge } from '../components/ui.js';
+import { icon, iconButton } from '../components/icon.js';
 
 const LIMIT = 20;
 const state = { from: '', to: '', offset: 0 };
@@ -34,8 +36,8 @@ export function visitsView(outlet, _params, ctx) {
       box.replaceChildren(
         emptyState(
           state.from || state.to ? '이 기간의 방문 기록이 없어요' : '아직 방문 기록이 없어요',
-          '추천을 받고 "여기로 갈래요"를 누르면 기록돼요.',
-          h('a', { class: 'btn btn-primary', href: '#/' }, '추천받으러 가기'),
+          '추천 결과에서 체크(✓)를 누르면 기록돼요.',
+          iconButton({ name: 'dices', label: '추천받으러 가기', text: '추천받으러 가기', href: '#/', cls: 'btn btn-primary' }),
         ),
       );
       return;
@@ -53,7 +55,8 @@ export function visitsView(outlet, _params, ctx) {
           h('h2', { class: 'day-title' }, date),
           h('ul', { class: 'cards' }, items.map((v) => {
             const name = v.restaurant_name;
-            const del = h('button', { type: 'button', class: 'btn btn-danger-ghost', 'aria-label': `${name} ${v.visited_on} 기록 삭제` }, '삭제');
+            const del = iconButton({ name: 'trash', label: `${name} ${v.visited_on} 기록 삭제`, cls: 'btn btn-danger-ghost' });
+            del.title = '삭제';
             del.addEventListener('click', async () => {
               const ok = await confirmDialog({ title: '방문 기록을 삭제할까요?', message: `${v.visited_on} ${name}`, confirmText: '삭제', danger: true });
               if (!ok) return;
@@ -65,11 +68,11 @@ export function visitsView(outlet, _params, ctx) {
                 showToast(e.message, 'error');
               }
             });
-            return h('li', { class: 'card item' }, [
+            return h('li', { class: 'row item' }, [
               h('div', { class: 'item-main' }, [
                 h('a', { class: 'item-name', href: `#/restaurants/${v.restaurant_id}` }, name),
                 v.note && h('p', { class: 'muted small' }, v.note),
-                h('span', { class: 'badge' }, v.source === 'RECOMMENDATION' ? '추천' : '직접 기록'),
+                v.source === 'RECOMMENDATION' ? badge('추천', '', { icon: 'dices', iconOnly: true }) : badge('직접 기록', '', { icon: 'pencil', iconOnly: true }),
               ]),
               del,
             ]);
@@ -82,8 +85,8 @@ export function visitsView(outlet, _params, ctx) {
 
   const from = h('input', { type: 'date', value: state.from });
   const to = h('input', { type: 'date', value: state.to });
-  const fF = field({ label: '시작일', control: from });
-  const tF = field({ label: '종료일', control: to });
+  const fF = field({ label: '시작일', control: from, icon: 'calendar' });
+  const tF = field({ label: '종료일', control: to, icon: 'calendar' });
   const apply = (e) => {
     e?.preventDefault();
     tF.setError('');
@@ -96,13 +99,13 @@ export function visitsView(outlet, _params, ctx) {
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
-      h('div', { class: 'page-head' }, h('h1', {}, '기록')),
+      h('div', { class: 'page-head' }, h('h1', {}, [icon('notebook-pen', { size: '1.1em' }), '기록'])),
       visitTabs('list'),
       h('form', { class: 'panel', onSubmit: apply }, [
         h('div', { class: 'row-fields' }, [fF, tF]),
         h('div', { class: 'actions' }, [
-          h('button', { class: 'btn', type: 'submit' }, '조회'),
-          h('button', { class: 'btn btn-ghost', type: 'button', onClick: () => { from.value = ''; to.value = ''; apply(); } }, '초기화'),
+          h('button', { class: 'btn btn-icon', type: 'submit', 'aria-label': '조회', title: '조회' }, icon('search')),
+          iconButton({ name: 'rotate-ccw', label: '초기화', cls: 'btn btn-ghost', onClick: () => { from.value = ''; to.value = ''; apply(); } }),
         ]),
       ]),
       box,

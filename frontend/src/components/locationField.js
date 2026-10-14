@@ -2,6 +2,7 @@ import { api } from '../api/client.js';
 import { h } from './dom.js';
 import { field, selectEl } from './ui.js';
 import { showToast } from './toast.js';
+import { icon } from './icon.js';
 
 const STORAGE_KEY = 'dinner.location';
 
@@ -78,7 +79,7 @@ export function locationField({ isCurrent, onChange }) {
   }).catch((e) => showToast(e.message, 'error'));
 
   const el = h('fieldset', {}, [
-    h('legend', {}, '위치'),
+    h('legend', {}, [icon('map-pin'), '위치']),
     h('div', { class: 'row-fields' }, [
       field({ label: '시군구', control: sigunguSel }),
       field({ label: '동', control: dongSel }),

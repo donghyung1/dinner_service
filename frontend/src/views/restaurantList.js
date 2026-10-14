@@ -2,6 +2,7 @@ import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { badge, chipGroup, emptyState, errorState, favoriteButton, field, restaurantBadges, selectEl, skipSuggestion, spinner } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
+import { icon, iconButton, iconLabel } from '../components/icon.js';
 import { CATEGORIES, PRICES, SORTS, STATUSES, categoryLabel, placeToFormValues } from '../constants.js';
 
 const LIMIT = 20;
@@ -149,13 +150,14 @@ export function restaurantListView(outlet, _params, ctx) {
   }
 
   function addButton(p) {
-    const btn = h('button', { type: 'button', class: 'btn', 'aria-label': `${placeTitle(p)} 내 식당에 추가` }, '추가');
+    const btn = iconButton({ name: 'plus', label: `${placeTitle(p)} 내 식당에 추가` });
+    btn.title = '내 식당에 추가';
     btn.addEventListener('click', () => addPlace(p, btn));
     return btn;
   }
 
   function mineRow(r) {
-    return h('li', { class: 'card item' }, [
+    return h('li', { class: 'row item' }, [
       h('div', { class: 'item-main' }, [
         h('h2', { class: 'item-name' }, h('a', { href: `#/restaurants/${r.id}` }, r.name)),
         restaurantBadges(r),
@@ -167,10 +169,10 @@ export function restaurantListView(outlet, _params, ctx) {
   }
 
   const placeBadges = (p) =>
-    h('div', { class: 'badges' }, [badge(categoryLabel(p.category), 'badge-cat'), p.industry_small && badge(p.industry_small)]);
+    h('div', { class: 'badges' }, [badge(categoryLabel(p.category), 'badge-cat', { icon: 'utensils' }), p.industry_small && badge(p.industry_small), badge('동네 식당', '', { icon: 'landmark', iconOnly: true })]);
 
   function placeRow(p) {
-    return h('li', { class: 'card item list-place' }, [
+    return h('li', { class: 'row item list-place' }, [
       h('div', { class: 'item-main' }, [
         h('h2', { class: 'item-name' }, placeTitle(p)),
         placeBadges(p),
@@ -182,9 +184,10 @@ export function restaurantListView(outlet, _params, ctx) {
 
   // --- 목록 ---
   function summary() {
-    const parts = [`내 식당 ${fmt(mineTotal)}곳`];
-    if (placeTotal > 0) parts.push(`동네 식당 ${fmt(placeTotal)}곳`);
-    return parts.join(' · ');
+    const part = (name, label, n) => h('span', { class: 'total-part', title: `${label} ${fmt(n)}곳` }, [
+      icon(name), h('span', {}, fmt(n)), h('span', { class: 'sr-only' }, `${label} ${fmt(n)}곳`),
+    ]);
+    return [part('utensils', '내 식당', mineTotal), placeTotal > 0 && part('landmark', '동네 식당', placeTotal)];
   }
 
   function renderList() {
@@ -194,7 +197,7 @@ export function restaurantListView(outlet, _params, ctx) {
         emptyState(
           filtered ? '조건에 맞는 식당이 없어요' : '아직 등록한 식당이 없어요',
           filtered ? '검색어나 필터를 바꿔 보세요.' : '지역이나 카테고리를 골라 동네 식당을 찾아보세요.',
-          filtered ? null : h('div', { class: 'actions' }, h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '+ 직접 추가')),
+          filtered ? null : h('div', { class: 'actions' }, iconButton({ name: 'plus', label: '직접 추가', text: '직접 추가', href: '#/restaurants/new', cls: 'btn btn-primary' })),
         ),
       );
       return;
@@ -205,7 +208,7 @@ export function restaurantListView(outlet, _params, ctx) {
     }
     nodes.push(h('ul', { class: 'cards' }, items.map((it) => (it.kind === 'mine' ? mineRow(it) : placeRow(it)))));
     if (items.length < total) {
-      const more = h('button', { type: 'button', class: 'btn' }, `더 보기 (${fmt(items.length)} / ${fmt(total)})`);
+      const more = h('button', { type: 'button', class: 'btn', 'aria-label': '더 보기', title: '더 보기' }, [icon('chevron-down'), h('span', {}, `${fmt(items.length)} / ${fmt(total)}`)]);
       more.addEventListener('click', () => { more.disabled = true; load(true); });
       nodes.push(h('div', { class: 'list-more' }, more));
     }
@@ -258,19 +261,18 @@ export function restaurantListView(outlet, _params, ctx) {
       );
       return;
     }
-    const again = h('button', { type: 'button', class: 'btn' }, '다시 뽑기');
-    again.addEventListener('click', doPick);
+    const again = iconButton({ name: 'rotate-cw', label: '다시 뽑기', onClick: doPick });
     const mine = pick.kind === 'mine';
     pickBox.replaceChildren(
-      h('div', { class: 'card item' }, [
+      h('div', { class: 'pick-card item' }, [
         h('div', { class: 'item-main' }, [
-          h('p', { class: 'muted small' }, '이 조건에서 뽑힌 곳'),
+          h('p', { class: 'muted small' }, iconLabel('dices', '이 조건에서 뽑힌 곳')),
           h('h2', { class: 'item-name' }, mine ? pick.name : placeTitle(pick)),
           mine ? restaurantBadges(pick) : placeBadges(pick),
           (mine ? pick.location : pick.location || '주소 정보 없음') && h('p', { class: 'muted small' }, mine ? pick.location : pick.location || '주소 정보 없음'),
           h('div', { class: 'actions' }, [
             again,
-            mine ? h('a', { class: 'btn', href: `#/restaurants/${pick.id}` }, '상세 보기') : addButton(pick),
+            mine ? iconButton({ name: 'arrow-up-right', label: '상세 보기', href: `#/restaurants/${pick.id}` }) : addButton(pick),
           ]),
         ]),
       ]),
@@ -299,16 +301,16 @@ export function restaurantListView(outlet, _params, ctx) {
   sortSel.addEventListener('change', () => { filters.sort = sortSel.value; refilter(); });
   statusSel.addEventListener('change', () => { filters.status = statusSel.value; refilter(); });
   favInput.addEventListener('change', () => { filters.fav = favInput.checked; refilter(); });
-  const pickBtn = h('button', { type: 'button', class: 'btn btn-primary' }, '이 조건에서 추천받기');
+  const pickBtn = h('button', { type: 'button', class: 'btn btn-primary' }, [icon('dices'), h('span', {}, '이 조건에서 추천받기')]);
   pickBtn.addEventListener('click', doPick);
 
   const detail = h('details', { class: 'filter-detail' }, [
-    h('summary', {}, '상세 필터 (상태·가격대·즐겨찾기·정렬)'),
+    h('summary', {}, [icon('sliders'), '상세 필터 (상태·가격대·즐겨찾기·정렬)']),
     chipGroup({ legend: '가격대', name: 'lprice', options: PRICES, selected: filters.prices, onChange: (v) => { filters.prices = v; refilter(); } }),
     h('div', { class: 'row-fields' }, [
-      field({ label: '상태', control: statusSel }),
-      field({ label: '정렬', control: sortSel }),
-      h('div', { class: 'check' }, [favInput, h('label', { for: 'fav' }, '즐겨찾기만')]),
+      field({ label: '상태', control: statusSel, icon: 'bookmark' }),
+      field({ label: '정렬', control: sortSel, icon: 'list' }),
+      h('div', { class: 'check' }, [favInput, h('label', { for: 'fav' }, [icon('star'), '즐겨찾기만'])]),
     ]),
     h('p', { class: 'hint' }, '상태·가격대·즐겨찾기를 고르면 내 식당만 보여요.'),
   ]);
@@ -317,22 +319,22 @@ export function restaurantListView(outlet, _params, ctx) {
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
       h('div', { class: 'page-head' }, [
-        h('h1', {}, '식당'),
-        h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '+ 식당 추가'),
+        h('h1', {}, [icon('utensils', { size: '1.1em' }), '식당']),
+        iconButton({ name: 'plus', label: '식당 추가', href: '#/restaurants/new', cls: 'btn btn-primary' }),
       ]),
       h('form', { class: 'panel', role: 'search', onSubmit: (e) => { e.preventDefault(); filters.q = qInput.value.trim(); refilter(); } }, [
         h('div', { class: 'search-row' }, [
           h('label', { for: 'q', class: 'sr-only' }, '검색어'),
           qInput,
-          h('button', { class: 'btn', type: 'submit' }, '검색'),
+          h('button', { class: 'btn btn-icon', type: 'submit', 'aria-label': '검색', title: '검색' }, icon('search')),
         ]),
         chipGroup({ legend: '카테고리', name: 'lcat', options: CATEGORIES, selected: filters.categories, onChange: (v) => { filters.categories = v; refilter(); } }),
         h('div', { class: 'row-fields' }, [
-          field({ label: '시군구', control: sigunguSel }),
+          field({ label: '시군구', control: sigunguSel, icon: 'map-pin' }),
           field({ label: '동', control: dongSel }),
         ]),
         detail,
-        h('div', { class: 'check' }, [mineOnly, h('label', { for: 'mine-only' }, '내 식당만')]),
+        h('div', { class: 'check' }, [mineOnly, h('label', { for: 'mine-only' }, [icon('utensils'), '내 식당만'])]),
         pickBtn,
       ]),
       pickBox,

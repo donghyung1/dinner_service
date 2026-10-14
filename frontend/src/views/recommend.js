@@ -1,6 +1,7 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { badge, chipGroup, restaurantBadges, spinner } from '../components/ui.js';
+import { icon, iconButton, iconLabel } from '../components/icon.js';
 import { locationField, locationLabel } from '../components/locationField.js';
 import { showToast } from '../components/toast.js';
 import { CATEGORIES, PRICES, STATUSES, categoryLabel, placeToFormValues } from '../constants.js';
@@ -11,7 +12,22 @@ const FATE_KEY = 'dinner.fateMode';
 const TOURNAMENT_KEY = 'dinner.tournamentMode';
 const FATE_MAX = 3;
 const TOURNAMENT_SIZE = 4;
-const SLOT_FACES = ['🍜', '🍣', '🍕', '🍚', '🥟', '🍔', '🥘', '🍛', '🥗', '🍢'];
+const DRAWS_KEY = 'dinner.draws';
+
+/** 오늘 뽑은 횟수(식권 번호). {date, count} 를 localStorage 에 두고 날짜가 바뀌면 1부터 다시 센다. */
+function bumpDrawCount() {
+  const today = new Date().toLocaleDateString('sv-SE');
+  let count = 0;
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAWS_KEY) || 'null');
+    if (raw && raw.date === today && Number.isInteger(raw.count)) count = raw.count;
+    count += 1;
+    localStorage.setItem(DRAWS_KEY, JSON.stringify({ date: today, count }));
+  } catch {
+    count = count || 1;
+  }
+  return count;
+}
 
 function loadFilters() {
   try {
@@ -80,7 +96,7 @@ const canAnimate = () => typeof window.matchMedia === 'function' && !prefersRedu
 export function recommendView(outlet, _params, ctx) {
   const filters = loadFilters();
   let busy = false;
-  let timer = null;
+  let drawNo = 1; // 현재 식권 번호(오늘 N번째 뽑기)
   let fateMode = loadFlag(FATE_KEY);
   let tournamentMode = loadFlag(TOURNAMENT_KEY);
   let fateCount = 1; // 현재 흐름에서 보고 있는 결과 번호 (메모리 전용)
@@ -186,7 +202,7 @@ export function recommendView(outlet, _params, ctx) {
           type: 'button',
           class: 'gap-banner',
           onClick: () => { setCategoryOnly(g.category); start(); },
-        }, `🍽 ${text} · 눌러서 뽑기`),
+        }, [icon('utensils'), h('span', {}, text), icon('dices', { cls: 'gap-go' })]),
       );
     } catch {
       /* 배너는 부가 기능이므로 실패해도 무시한다 */
@@ -198,25 +214,23 @@ export function recommendView(outlet, _params, ctx) {
     recommendView(outlet, _params, ctx);
   }
 
-  const drawBtn = h('button', { class: 'btn btn-primary btn-lg' }, '추천받기');
-  drawBtn.type = 'submit';
-  const staleBtn = h('button', { type: 'button', class: 'btn', onClick: () => start({ stale: true }) }, '미뤄둔 곳 뽑기');
+  const drawBtn = h('button', { class: 'btn btn-primary btn-lg btn-draw', type: 'submit' }, [icon('dices', { size: '1.2em' }), h('span', {}, '추천받기')]);
+  const staleBtn = iconButton({ name: 'hourglass', label: '미뤄둔 곳 뽑기', text: '미뤄둔 곳', onClick: () => start({ stale: true }) });
 
   function showResult(node) {
     resultBox.replaceChildren(node);
   }
 
+  /** 식권 발급구: 발급구 선 아래로 빈 식권이 밀려 나오는 대기 연출. 움직임 줄이기 설정이면 건너뛴다. */
   async function animate() {
     if (!canAnimate()) return;
-    const face = h('div', { class: 'slot', 'aria-hidden': 'true' });
-    showResult(face);
-    let i = 0;
-    timer = setInterval(() => {
-      face.textContent = SLOT_FACES[i++ % SLOT_FACES.length];
-    }, 90);
-    await new Promise((r) => setTimeout(r, 1000));
-    clearInterval(timer);
-    timer = null;
+    showResult(
+      h('div', { class: 'printer', 'aria-hidden': 'true' }, [
+        h('div', { class: 'slot-line' }),
+        h('div', { class: 'printer-window' }, h('div', { class: 'ticket ticket-blank' }, [h('span'), h('span'), h('span')])),
+      ]),
+    );
+    await new Promise((r) => setTimeout(r, 900));
   }
 
   /** 새 흐름 시작: 카운터를 1로 돌리고 모드에 맞게 뽑는다. */
@@ -241,7 +255,7 @@ export function recommendView(outlet, _params, ctx) {
     drawBtn.disabled = true;
     staleBtn.disabled = true;
     resultBox.setAttribute('aria-busy', 'true');
-    showResult(spinner('맛집을 고르는 중…'));
+    showResult(spinner('식권을 뽑는 중…'));
     try {
       const [res] = await Promise.all([fetcher().then((v) => ({ ok: v }), (e) => ({ err: e })), animate()]);
       if (!ctx.isCurrent()) return;
@@ -265,6 +279,7 @@ export function recommendView(outlet, _params, ctx) {
   function draw(excludeRec) {
     if (busy || !guardDays()) return;
     return run(() => api.recommend(toQuery(filters, excludeRec, stale, locField.get())), (res) => {
+      drawNo = bumpDrawCount();
       lastRes = res;
       renderResult(res);
     });
@@ -275,6 +290,7 @@ export function recommendView(outlet, _params, ctx) {
     return run(
       () => api.recommendCandidates({ ...toQuery(filters, undefined, stale, locField.get()), count: TOURNAMENT_SIZE }),
       (res) => {
+        drawNo = bumpDrawCount();
         renderTournament(res.restaurants || []);
       },
     );
@@ -288,7 +304,7 @@ export function recommendView(outlet, _params, ctx) {
     return draw(r);
   }
 
-  async function accept(r, btn, statusEl) {
+  async function accept(r, btn, statusEl, ticketEl) {
     btn.disabled = true;
     try {
       // 동네 식당은 먼저 내 식당(가보고 싶음)으로 추가한 뒤 방문을 기록한다.
@@ -296,9 +312,14 @@ export function recommendView(outlet, _params, ctx) {
       await api.createVisit({ restaurant_id: id, source: 'RECOMMENDATION' });
       showToast(`${r.name} 방문을 기록했어요. 맛있게 드세요!`, 'success');
       statusEl.replaceChildren(
-        h('p', { class: 'accepted' }, ['✔ 오늘 방문으로 기록했어요. ', h('a', { href: '#/visits' }, '기록 보기')]),
+        h('p', { class: 'accepted' }, [
+          icon('circle-check'),
+          h('span', {}, '오늘 방문으로 기록했어요.'),
+          iconButton({ name: 'notebook-pen', label: '기록 보기', href: '#/visits', cls: 'btn btn-ghost btn-sm' }),
+        ]),
       );
       btn.hidden = true;
+      stampTicket(ticketEl);
       loadGap();
     } catch (e) {
       btn.disabled = false;
@@ -307,18 +328,35 @@ export function recommendView(outlet, _params, ctx) {
   }
 
   const placeBadges = (r) =>
-    h('div', { class: 'badges' }, [badge(categoryLabel(r.category), 'badge-cat'), badge('동네 식당(공공데이터)')]);
+    h('div', { class: 'badges' }, [
+      badge(categoryLabel(r.category), 'badge-cat', { icon: 'utensils' }),
+      badge('동네 식당(공공데이터)', '', { icon: 'landmark', iconOnly: true }),
+    ]);
+
+  /** 수락된 식권에 붉은 도장을 찍는다. */
+  function stampTicket(ticketEl) {
+    if (!ticketEl || ticketEl.querySelector('.seal')) return;
+    ticketEl.classList.add('is-stamped');
+    ticketEl.append(
+      h('div', { class: `seal${canAnimate() ? ' stamp-in' : ''}`, role: 'img', 'aria-label': '오늘은 여기' }, [
+        h('span', {}, '오늘은'),
+        h('span', {}, '여기'),
+      ]),
+    );
+  }
   const badgesOf = (r) => (isPlace(r) ? placeBadges(r) : restaurantBadges(r));
 
   /** 동네 식당 [내 식당에 추가]. 추가 후 버튼은 안내 문구로 바뀐다. */
   function addPlaceButton(r) {
-    const btn = h('button', { type: 'button', class: 'btn' }, '내 식당에 추가');
+    const btn = iconButton({ name: 'plus', label: '내 식당에 추가' });
     btn.addEventListener('click', async () => {
       btn.disabled = true;
       try {
         await api.createRestaurant({ ...placeToFormValues(r), status: 'WISHLIST' });
         showToast(`"${r.name}"을(를) 내 식당에 추가했어요.`, 'success');
-        btn.textContent = '추가했어요 ✔';
+        btn.replaceChildren(icon('check'));
+        btn.setAttribute('aria-label', '내 식당에 추가했어요');
+        btn.title = '내 식당에 추가했어요';
       } catch (e) {
         btn.disabled = false;
         showToast(e.message, 'error');
@@ -328,51 +366,87 @@ export function recommendView(outlet, _params, ctx) {
   }
 
   function factsOf(r) {
-    if (isPlace(r)) return h('dl', { class: 'facts' }, [h('dt', {}, '주소'), h('dd', {}, r.location || '주소 정보 없음')]);
+    const row = (name, label, value, cls = '') => [
+      h('dt', {}, iconLabel(name, label)),
+      h('dd', cls ? { class: cls } : {}, value),
+    ];
+    if (isPlace(r)) return h('dl', { class: 'facts' }, row('map-pin', '주소', r.location || '주소 정보 없음'));
     return h('dl', { class: 'facts' }, [
-      r.location && [h('dt', {}, '위치'), h('dd', {}, r.location)],
-      r.memo && [h('dt', {}, '메모'), h('dd', { class: 'pre' }, r.memo)],
-      h('dt', {}, '마지막 방문'),
-      h('dd', {}, r.last_visited_on || '아직 방문 기록이 없어요'),
+      r.location && row('map-pin', '위치', r.location),
+      r.memo && row('note', '메모', r.memo, 'pre'),
+      row('calendar', '마지막 방문', r.last_visited_on || '아직 방문 기록이 없어요'),
     ]);
   }
 
-  function resultCard(r, eyebrow, buttons, status) {
-    return h('article', { class: 'card result-card reveal' }, [
-      h('p', { class: 'eyebrow' }, eyebrow),
-      h('h2', { class: 'result-name' }, [r.name, r.is_favorite && h('span', { class: 'star', title: '즐겨찾기' }, ' ★')]),
+  const detailLink = (r) =>
+    isPlace(r) ? addPlaceButton(r) : iconButton({ name: 'arrow-up-right', label: '상세 보기', href: `#/restaurants/${r.id}`, cls: 'btn btn-ghost' });
+
+  /** 식권 한 장. stub 이 있으면 본체 | 절취선 | 스텁 구조, small 이면 스텁 없는 작은 식권. */
+  function ticket(r, { stub, buttons = [], status, small = false, note }) {
+    const main = h('div', { class: 'ticket-main' }, [
       badgesOf(r),
+      h('h2', { class: 'ticket-name' }, [
+        r.name,
+        r.is_favorite && h('span', { class: 'star-mark', title: '즐겨찾기' }, [icon('star', { cls: 'is-fav' }), h('span', { class: 'sr-only' }, '즐겨찾기')]),
+      ]),
       factsOf(r),
+      note,
       status,
-      h('div', { class: 'actions' }, [
-        ...buttons,
-        isPlace(r) ? addPlaceButton(r) : h('a', { class: 'btn btn-ghost', href: `#/restaurants/${r.id}` }, '상세 보기'),
+      h('div', { class: 'actions' }, buttons),
+    ]);
+    if (small) return h('article', { class: 'ticket ticket-sm reveal' }, main);
+    return h('article', { class: 'ticket' }, [main, h('div', { class: 'ticket-perf', 'aria-hidden': 'true' }), stub]);
+  }
+
+  function ticketStub(res, fate) {
+    return h('div', { class: 'ticket-stub' }, [
+      h('p', { class: 'stub-no', title: `오늘 ${drawNo}번째 뽑기` }, [
+        h('span', { 'aria-hidden': 'true' }, 'No.'),
+        h('strong', {}, String(drawNo).padStart(2, '0')),
+        h('span', { class: 'sr-only' }, `오늘 ${drawNo}번째 뽑기`),
+      ]),
+      h('ul', { class: 'stub-meta' }, [
+        res && h('li', {}, [iconLabel('list-checks', `후보 ${res.candidate_count}곳 중`), h('span', {}, String(res.candidate_count))]),
+        stale && h('li', {}, [iconLabel('hourglass', '미뤄둔 곳')]),
+        fate && h('li', {}, [iconLabel('sparkles', `운명 ${Math.min(fateCount, FATE_MAX)}/${FATE_MAX}`), h('span', {}, `${Math.min(fateCount, FATE_MAX)}/${FATE_MAX}`)]),
       ]),
     ]);
   }
 
+  function printed(node) {
+    return h('div', { class: 'printer' }, [h('div', { class: 'slot-line' }), h('div', { class: 'printer-window' }, node)]);
+  }
+
   function renderResult(res) {
-    const { restaurant: r, candidate_count } = res;
+    const { restaurant: r } = res;
     const fate = fateMode && !tournamentMode;
     const last = fate && fateCount >= FATE_MAX;
     const status = h('div');
-    const acceptBtn = h('button', { type: 'button', class: 'btn btn-primary' }, '여기로 갈래요');
-    acceptBtn.addEventListener('click', () => accept(r, acceptBtn, status));
-    const againBtn = h('button', { type: 'button', class: 'btn', disabled: last, onClick: () => again(r) }, '다시 뽑기');
-    const head = stale ? '미뤄둔 곳' : '오늘의 추천';
-    const eyebrow = `${head} · 후보 ${candidate_count}곳 중${fate ? ` · 운명 ${Math.min(fateCount, FATE_MAX)}/${FATE_MAX}` : ''}`;
-    const card = resultCard(r, eyebrow, [acceptBtn, againBtn], status);
-    if (last) card.insertBefore(h('p', { class: 'fate-note' }, '운명입니다'), status);
-    showResult(card);
+    const acceptBtn = iconButton({ name: 'check', label: '여기로 갈래요', cls: 'btn btn-primary btn-accept' });
+    const againBtn = iconButton({ name: 'rotate-cw', label: '다시 뽑기', disabled: last, onClick: () => again(r) });
+    const t = ticket(r, {
+      stub: ticketStub(res, fate),
+      buttons: [acceptBtn, againBtn, detailLink(r)],
+      status,
+      note: last && h('p', { class: 'fate-note' }, '운명입니다'),
+    });
+    acceptBtn.addEventListener('click', () => accept(r, acceptBtn, status, t));
+    showResult(printed(t));
     (acceptBtn.focus && !acceptBtn.disabled) && acceptBtn.focus({ preventScroll: true });
   }
 
   function renderFinal(r, total) {
     const status = h('div');
-    const acceptBtn = h('button', { type: 'button', class: 'btn btn-primary' }, '여기로 갈래요');
-    acceptBtn.addEventListener('click', () => accept(r, acceptBtn, status));
-    const restart = h('button', { type: 'button', class: 'btn', onClick: () => start({ stale }) }, '처음부터 다시');
-    showResult(resultCard(r, total > 1 ? '최후의 1곳' : '토너먼트 · 후보가 1곳뿐이에요', [acceptBtn, restart], status));
+    const acceptBtn = iconButton({ name: 'check', label: '여기로 갈래요', cls: 'btn btn-primary btn-accept' });
+    const restart = iconButton({ name: 'rotate-ccw', label: '처음부터 다시', onClick: () => start({ stale }) });
+    const t = ticket(r, {
+      stub: ticketStub(null, false),
+      buttons: [acceptBtn, restart, detailLink(r)],
+      status,
+      note: h('p', { class: 'fate-note' }, [icon('trophy'), h('span', {}, total > 1 ? '최후의 1곳' : '후보가 1곳뿐이에요')]),
+    });
+    acceptBtn.addEventListener('click', () => accept(r, acceptBtn, status, t));
+    showResult(printed(t));
     acceptBtn.focus?.({ preventScroll: true });
   }
 
@@ -387,11 +461,12 @@ export function recommendView(outlet, _params, ctx) {
     const grid = h('div', { class: 'tournament' });
     const head = h('p', { class: 'tournament-head', 'aria-live': 'polite' });
     const paint = () => {
-      head.textContent = `마음에 안 드는 곳을 지워 주세요 (${left.length}곳 남음)`;
+      head.replaceChildren(icon('trophy'), h('span', {}, `마음에 안 드는 곳을 지워 주세요 (${left.length}곳 남음)`));
     };
     for (const r of left) {
-      const card = h('article', { class: 'card reveal' });
-      const del = h('button', { type: 'button', class: 'btn btn-danger-ghost', 'aria-label': `${r.name} 지우기` }, '지우기');
+      const del = iconButton({ name: 'x', label: `${r.name} 지우기`, cls: 'btn btn-danger-ghost' });
+      del.title = '지우기';
+      const card = ticket(r, { small: true, buttons: [del, isPlace(r) && addPlaceButton(r)] });
       del.addEventListener('click', () => {
         left = left.filter((x) => candKey(x) !== candKey(r));
         card.remove();
@@ -401,12 +476,6 @@ export function recommendView(outlet, _params, ctx) {
           grid.querySelector('button')?.focus();
         }
       });
-      card.append(
-        h('h2', { class: 'item-name' }, [r.name, r.is_favorite && h('span', { class: 'star', title: '즐겨찾기' }, ' ★')]),
-        badgesOf(r),
-        factsOf(r),
-        h('div', { class: 'actions' }, [del, isPlace(r) && addPlaceButton(r)]),
-      );
       grid.append(card);
     }
     paint();
@@ -425,8 +494,8 @@ export function recommendView(outlet, _params, ctx) {
         daysInput.removeAttribute('aria-invalid');
         start({ stale });
       },
-    }, '최근 방문 제외 없이 다시 뽑기');
-    const reset = h('button', { type: 'button', class: 'btn', onClick: resetFilters }, '조건 모두 초기화');
+    }, [icon('rotate-cw'), h('span', {}, '최근 방문 제외 없이 다시 뽑기')]);
+    const reset = h('button', { type: 'button', class: 'btn', onClick: resetFilters }, [icon('rotate-ccw'), h('span', {}, '조건 모두 초기화')]);
     if (stale) {
       showResult(
         h('div', { class: 'state state-empty', role: 'status' }, [
@@ -445,7 +514,7 @@ export function recommendView(outlet, _params, ctx) {
           loc && h('li', {}, '위치를 넓히거나(동 전체·다른 동) 해제해 보세요.'),
           h('li', {}, '새로운 식당을 추가해 보세요.'),
         ]),
-        h('div', { class: 'actions' }, [relax, reset, h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '식당 추가')]),
+        h('div', { class: 'actions' }, [relax, reset, iconButton({ name: 'plus', label: '식당 추가', text: '식당 추가', href: '#/restaurants/new', cls: 'btn btn-primary' })]),
       ]),
     );
   }
@@ -463,16 +532,16 @@ export function recommendView(outlet, _params, ctx) {
           statusGroup,
           h('div', { class: 'row-fields' }, [
             h('div', { class: 'field' }, [
-              h('label', { for: 'days' }, '최근 방문 제외 (일)'),
+              h('label', { for: 'days' }, [icon('calendar'), '최근 방문 제외 (일)']),
               daysInput,
               h('p', { class: 'hint', id: 'days-hint' }, '0이면 제외하지 않아요. 최대 90일.'),
               daysErr,
             ]),
-            h('div', { class: 'check' }, [favInput, h('label', { for: 'fav-only' }, '즐겨찾기만')]),
+            h('div', { class: 'check' }, [favInput, h('label', { for: 'fav-only' }, [icon('star'), '즐겨찾기만'])]),
           ]),
           h('div', { class: 'modes' }, [
-            h('div', { class: 'check' }, [fateInput, h('label', { for: 'fate-mode' }, '운명 모드 (결과 최대 3번)')]),
-            h('div', { class: 'check' }, [tourInput, h('label', { for: 'tour-mode' }, '토너먼트 모드 (4곳 중 하나씩 지우기)')]),
+            h('div', { class: 'check' }, [fateInput, h('label', { for: 'fate-mode' }, [icon('sparkles'), '운명 모드 (결과 최대 3번)'])]),
+            h('div', { class: 'check' }, [tourInput, h('label', { for: 'tour-mode' }, [icon('trophy'), '토너먼트 모드 (4곳 중 하나씩 지우기)'])]),
           ]),
           fateNote,
           h('div', { class: 'actions' }, [drawBtn, staleBtn]),
@@ -485,5 +554,4 @@ export function recommendView(outlet, _params, ctx) {
   renderAll();
   syncFateNote();
   loadGap();
-  return () => timer && clearInterval(timer);
 }
