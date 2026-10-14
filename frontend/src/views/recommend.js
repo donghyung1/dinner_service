@@ -1,7 +1,7 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { badge, chipGroup, restaurantBadges, spinner } from '../components/ui.js';
-import { locationBar, locationLabel } from '../components/locationBar.js';
+import { locationField, locationLabel } from '../components/locationField.js';
 import { showToast } from '../components/toast.js';
 import { CATEGORIES, PRICES, STATUSES, categoryLabel, placeToFormValues } from '../constants.js';
 
@@ -86,7 +86,7 @@ export function recommendView(outlet, _params, ctx) {
   let fateCount = 1; // 현재 흐름에서 보고 있는 결과 번호 (메모리 전용)
   let stale = false; // 현재 흐름이 [미뤄둔 곳 뽑기]인지
   let lastRes = null;
-  const locBar = locationBar({ isCurrent: ctx.isCurrent, onChange: () => { lastRes = null; resultBox.replaceChildren(); } });
+  const locField = locationField({ isCurrent: ctx.isCurrent, onChange: () => { lastRes = null; resultBox.replaceChildren(); } });
 
   const resultBox = h('div', { class: 'result', 'aria-live': 'polite', 'aria-atomic': 'true' });
 
@@ -264,7 +264,7 @@ export function recommendView(outlet, _params, ctx) {
 
   function draw(excludeRec) {
     if (busy || !guardDays()) return;
-    return run(() => api.recommend(toQuery(filters, excludeRec, stale, locBar.get())), (res) => {
+    return run(() => api.recommend(toQuery(filters, excludeRec, stale, locField.get())), (res) => {
       lastRes = res;
       renderResult(res);
     });
@@ -273,7 +273,7 @@ export function recommendView(outlet, _params, ctx) {
   function drawCandidates() {
     if (busy || !guardDays()) return;
     return run(
-      () => api.recommendCandidates({ ...toQuery(filters, undefined, stale, locBar.get()), count: TOURNAMENT_SIZE }),
+      () => api.recommendCandidates({ ...toQuery(filters, undefined, stale, locField.get()), count: TOURNAMENT_SIZE }),
       (res) => {
         renderTournament(res.restaurants || []);
       },
@@ -414,7 +414,7 @@ export function recommendView(outlet, _params, ctx) {
   }
 
   function renderNoCandidates() {
-    const loc = locBar.get();
+    const loc = locField.get();
     const relax = h('button', {
       type: 'button',
       class: 'btn',
@@ -456,8 +456,8 @@ export function recommendView(outlet, _params, ctx) {
         h('h1', {}, '오늘 뭐 먹지?'),
         h('p', { class: 'lead' }, '조건을 고르고 버튼을 누르면 한 곳을 골라 드려요.'),
         gapBox,
-        locBar.el,
         h('form', { class: 'panel', onSubmit: (e) => { e.preventDefault(); start(); } }, [
+          locField.el,
           catGroup,
           priceGroup,
           statusGroup,

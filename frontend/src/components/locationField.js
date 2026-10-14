@@ -30,12 +30,14 @@ export const locationLabel = (loc) => (loc ? `${loc.sigungu}${loc.dong ? ` ${loc
 const fmt = (n) => n.toLocaleString('ko-KR');
 
 /**
- * 추천 화면 상단의 "내 위치" 표시/선택 영역. 위치는 localStorage 에만 저장한다.
+ * 추천 조건 패널 안의 "위치" 표시/선택 영역. 위치는 localStorage 에만 저장한다.
+ * 패널이 <form> 이므로 편집 영역은 중첩 form 없이 버튼 클릭으로 저장한다.
  * onChange(loc) 는 저장 직후 호출된다(loc 은 null 일 수 있음).
  */
-export function locationBar({ isCurrent, onChange }) {
+export function locationField({ isCurrent, onChange }) {
   let loc = loadLocation();
-  const box = h('div', { class: 'location-bar' });
+  const box = h('div', { class: 'location-field' });
+  const fs = h('fieldset', {}, [h('legend', {}, '위치'), box]);
 
   function fill(sel, list, blank, value) {
     sel.replaceChildren(
@@ -80,7 +82,17 @@ export function locationBar({ isCurrent, onChange }) {
 
     sigunguSel.addEventListener('change', () => loadDongs(''));
 
-    const save = h('button', { type: 'submit', class: 'btn btn-primary' }, '저장');
+    const save = h('button', {
+      type: 'button',
+      class: 'btn btn-primary',
+      onClick: () => {
+        if (!sigunguSel.value) { sigunguSel.focus(); return; }
+        loc = { sigungu: sigunguSel.value, dong: dongSel.value };
+        saveLocation(loc);
+        renderView();
+        onChange(loc);
+      },
+    }, '저장');
     const cancel = h('button', { type: 'button', class: 'btn', onClick: renderView }, '취소');
     const clear = h('button', {
       type: 'button',
@@ -90,17 +102,7 @@ export function locationBar({ isCurrent, onChange }) {
     }, '위치 해제');
 
     box.replaceChildren(
-      h('form', {
-        class: 'location-edit',
-        onSubmit: (e) => {
-          e.preventDefault();
-          if (!sigunguSel.value) { sigunguSel.focus(); return; }
-          loc = { sigungu: sigunguSel.value, dong: dongSel.value };
-          saveLocation(loc);
-          renderView();
-          onChange(loc);
-        },
-      }, [
+      h('div', { class: 'location-edit' }, [
         h('div', { class: 'row-fields' }, [
           field({ label: '시군구', control: sigunguSel }),
           field({ label: '동', control: dongSel }),
@@ -118,7 +120,7 @@ export function locationBar({ isCurrent, onChange }) {
 
   renderView();
   return {
-    el: box,
+    el: fs,
     get: () => loc,
   };
 }
