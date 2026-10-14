@@ -199,3 +199,12 @@ textarea { resize: vertical; }
 .place-linked { flex: 1 1 auto; }
 .btn-link { min-height: 36px; padding: .2rem .8rem; font-size: .85rem; }
 .site-footer { max-width: 720px; margin: 1.5rem auto 2rem; padding: 0 1rem; font-size: .75rem; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+
+/* 동네 식당 둘러보기 (v0.7) */
+.explore-total { margin: 0 0 .6rem; font-weight: 700; }
+.explore-item { align-items: flex-start; }
+.explore-item .btn { flex: none; }
+.explore-more { display: flex; justify-content: center; margin: 1rem 0; }
+.explore-pick { margin: 0 0 1rem; }
+.explore-pick .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.explore-source { margin: 1.5rem 0 0; }

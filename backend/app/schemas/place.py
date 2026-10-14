@@ -22,3 +22,20 @@ class PlaceList(BaseModel):
     items: list[PlaceOut]
     count: int
     limit: int
+
+
+class PlaceBrowse(BaseModel):
+    items: list[PlaceOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RegionCount(BaseModel):
+    name: str
+    count: int
+
+
+class RegionList(BaseModel):
+    sigungu: str | None
+    items: list[RegionCount]

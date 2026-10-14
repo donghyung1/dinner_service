@@ -73,6 +73,14 @@ uv run python -m app.scripts.import_places data/<파일>.csv --sido 서울특별
 - 먼저 `--dry-run` 으로 요약을 보고, 출력되는 "매핑되지 않아 ETC로 적재된 중분류명"으로 `backend/app/scripts/place_mapping.py` 를 보정한 뒤 재실행한다.
 - 검색 API: `GET /api/v1/places?q=역삼 김밥&category=SNACK&limit=20` (`q` 2자 이상, 공백 토큰 AND, `limit` 최대 50).
 
+### 동네 식당 둘러보기 (M7)
+
+`#/explore` 화면에서 임포트한 `places`를 시군구/동/카테고리/키워드로 둘러보고, 조건 내 무작위 추천을 받고, 바로 "가보고 싶음"으로 등록한다. 추가 마이그레이션은 없다.
+
+- `GET /api/v1/places/regions?sigungu=` : 시군구(없으면)·동 목록과 건수
+- `GET /api/v1/places/browse?sigungu&dong&category&q&offset&limit` : `items` + `total` (이름순, `limit` 최대 50)
+- `GET /api/v1/places/random?sigungu&dong&category&q&exclude_registered=true` : 1건, 없으면 404
+
 ## 3. 프레젠테이션 계층 (Vanilla JS + Vite)
 
 React 등 UI 프레임워크 없이 ES 모듈 + Vite만 사용한다. 백엔드 API로만 통신한다. 브라우저는 같은 origin의 `/api/v1`로 요청하고 Vite 서버가 `API_PROXY_TARGET`(기본 `http://127.0.0.1:8000`)으로 프록시한다. 그래서 브라우저에서는 5173 포트만 열려 있으면 된다(WSL·VS Code 포트 포워딩 환경 포함).
@@ -85,7 +93,7 @@ npm run dev                 # 개발 서버 :5173 (/api 는 백엔드로 프록�
 npm run build && npm run preview   # dist/ 빌드 후 :4173 에서 서빙 (CORS 에 해당 Origin 추가 필요)
 ```
 
-해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits`.
+해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` `#/stats` `#/explore`(필터는 `?sigungu=&dong=&category=&q=`).
 구조: `src/{main.js, router.js, api/client.js, views/, components/, styles/}`.
 
 ## 환경변수

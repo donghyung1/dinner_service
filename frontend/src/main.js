@@ -8,6 +8,7 @@ import { restaurantDetailView } from './views/restaurantDetail.js';
 import { restaurantFormView } from './views/restaurantForm.js';
 import { visitsView } from './views/visits.js';
 import { statsView } from './views/stats.js';
+import { exploreView } from './views/explore.js';
 
 const routes = [
   { path: '/', name: 'recommend', view: recommendView },
@@ -17,6 +18,7 @@ const routes = [
   { path: '/restaurants/:id', name: 'restaurants', view: restaurantDetailView },
   { path: '/visits', name: 'visits', view: visitsView },
   { path: '/stats', name: 'stats', view: statsView },
+  { path: '/explore', name: 'explore', view: exploreView },
 ];
 
 function notFound(outlet) {
