@@ -62,6 +62,8 @@ async function request(method, path, { query, body, signal } = {}) {
 
 export const api = {
   listRestaurants: (query) => request('GET', '/restaurants', { query }),
+  searchRestaurants: (query) => request('GET', '/restaurants/search', { query }),
+  randomRestaurant: (query) => request('GET', '/restaurants/search/random', { query }),
   getRestaurant: (id) => request('GET', `/restaurants/${id}`),
   createRestaurant: (body) => request('POST', '/restaurants', { body }),
   updateRestaurant: (id, body) => request('PUT', `/restaurants/${id}`, { body }),
@@ -75,8 +77,6 @@ export const api = {
   monthlyStats: (month) => request('GET', '/stats/monthly', { query: { month } }),
   searchPlaces: (query, signal) => request('GET', '/places', { query, signal }),
   placeRegions: (query) => request('GET', '/places/regions', { query }),
-  browsePlaces: (query, signal) => request('GET', '/places/browse', { query, signal }),
-  randomPlace: (query) => request('GET', '/places/random', { query }),
   createVisit: (body) => request('POST', '/visits', { body }),
   listVisits: (query) => request('GET', '/visits', { query }),
   deleteVisit: (id) => request('DELETE', `/visits/${id}`),

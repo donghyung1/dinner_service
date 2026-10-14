@@ -4,10 +4,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+import re
+
 from sqlalchemy import Select, and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import RecommendationSkip, Restaurant, RestaurantSort, RestaurantStatus, Visit
+from app.models import Place, RecommendationSkip, Restaurant, RestaurantSort, RestaurantStatus, Visit
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,37 @@ def _to_row(r) -> RestaurantRow:
     return RestaurantRow(r[0], r[1], int(r[2] or 0), int(r[3] or 0), int(r[4] or 0))
 
 
+def _like(token: str) -> str:
+    return f"%{token.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+
+
+def _dong_stem(dong: str) -> str | None:
+    """'역삼1동' -> '역삼', '종로1가' -> '종로'. 어간이 2자 미만이면 None."""
+    stem = re.sub(r"[\d.·]+", "", dong)
+    if stem and stem[-1] in "동가":
+        stem = stem[:-1]
+    return stem if len(stem) >= 2 else None
+
+
+def _region_clause(sigungu: str | None, dong: str | None):
+    """내 식당의 지역 판정(근사). 카탈로그에 연결된 식당은 places 의 시군구/동으로 정확히,
+    연결되지 않은 식당은 location 문자열에 지역명이 포함되는지로 판정한다."""
+    linked_cond = [Place.place_no == Restaurant.place_no]
+    text_cond = []
+    if sigungu:
+        linked_cond.append(Place.sigungu == sigungu)
+        text_cond.append(Restaurant.location.like(_like(sigungu), escape="\\"))
+    if dong:
+        linked_cond.append(Place.dong == dong)
+        names = [dong] + ([s] if (s := _dong_stem(dong)) else [])
+        text_cond.append(or_(*(Restaurant.location.like(_like(n), escape="\\") for n in names)))
+    linked_any = exists().where(Place.place_no == Restaurant.place_no).correlate(Restaurant)
+    return or_(
+        exists().where(*linked_cond).correlate(Restaurant),
+        and_(~linked_any, *text_cond),
+    )
+
+
 def _apply_filters(
     stmt: Select,
     *,
@@ -80,9 +113,13 @@ def _apply_filters(
     price_levels: Sequence[int] | None = None,
     status=None,
     is_favorite: bool | None = None,
+    sigungu: str | None = None,
+    dong: str | None = None,
 ) -> Select:
+    if sigungu or dong:
+        stmt = stmt.where(_region_clause(sigungu, dong))
     if q:
-        like = f"%{q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+        like = _like(q)
         stmt = stmt.where(or_(Restaurant.name.like(like, escape="\\"), Restaurant.memo.like(like, escape="\\")))
     if categories:
         stmt = stmt.where(Restaurant.category.in_(categories))
@@ -118,6 +155,9 @@ class RestaurantRepository:
         rows = self.db.execute(stmt.limit(limit).offset(offset)).all()
         total = self.db.scalar(_apply_filters(select(func.count(Restaurant.id)), **filters)) or 0
         return [_to_row(r) for r in rows], total
+
+    def count(self, **filters) -> int:
+        return int(self.db.scalar(_apply_filters(select(func.count(Restaurant.id)), **filters)) or 0)
 
     def candidates(
         self,

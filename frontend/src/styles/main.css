@@ -200,17 +200,19 @@ textarea { resize: vertical; }
 .btn-link { min-height: 36px; padding: .2rem .8rem; font-size: .85rem; }
 .site-footer { max-width: 720px; margin: 1.5rem auto 2rem; padding: 0 1rem; font-size: .75rem; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
 
-/* 식당 화면 탭 */
+/* 탭 (기록 화면) */
 .tabs { display: flex; gap: .25rem; margin: 0 0 1rem; border-bottom: 1.5px solid var(--line); }
 .tab { padding: .6rem 1rem; min-height: 44px; display: inline-flex; align-items: center; font-weight: 600; color: inherit; text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1.5px; }
 .tab[aria-current="page"] { border-bottom-color: var(--primary); }
 .state-empty .actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
 
-/* 동네 식당 둘러보기 (v0.7) */
-.explore-total { margin: 0 0 .6rem; font-weight: 700; }
-.explore-item { align-items: flex-start; }
-.explore-item .btn { flex: none; }
-.explore-more { display: flex; justify-content: center; margin: 1rem 0; }
-.explore-pick { margin: 0 0 1rem; }
-.explore-pick .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-.explore-source { margin: 1.5rem 0 0; }
+/* 식당 통합 목록 (v0.8) */
+.list-total { margin: 0 0 .6rem; font-weight: 700; }
+.list-hint { margin: -.3rem 0 .6rem; }
+.list-place { align-items: flex-start; }
+.list-place .btn { flex: none; }
+.list-more { display: flex; justify-content: center; margin: 1rem 0; }
+.list-pick { margin: 0 0 1rem; }
+.list-pick .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.filter-detail { margin: .5rem 0; }
+.filter-detail summary { cursor: pointer; font-weight: 600; min-height: 36px; display: flex; align-items: center; }

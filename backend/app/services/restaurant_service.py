@@ -15,7 +15,7 @@ from app.schemas.visit import VisitOut
 from app.services.restaurant_view import derived_fields, expiring_cutoff
 
 
-def _out(row: RestaurantRow, cutoff) -> RestaurantOut:
+def restaurant_out(row: RestaurantRow, cutoff) -> RestaurantOut:
     o = RestaurantOut.model_validate(row.restaurant)
     for k, v in derived_fields(row, cutoff).items():
         setattr(o, k, v)
@@ -34,7 +34,7 @@ class RestaurantService:
         return r
 
     def _view(self, restaurant_id: int) -> RestaurantOut:
-        return _out(self.repo.get_row(restaurant_id), expiring_cutoff())
+        return restaurant_out(self.repo.get_row(restaurant_id), expiring_cutoff())
 
     def create(self, data: RestaurantCreate) -> RestaurantOut:
         r = self.repo.add(Restaurant(**data.model_dump()))
@@ -43,7 +43,7 @@ class RestaurantService:
     def list(self, *, sort, limit: int, offset: int, **filters) -> RestaurantList:
         rows, total = self.repo.list(sort=sort, limit=limit, offset=offset, **filters)
         cutoff = expiring_cutoff()
-        return RestaurantList(items=[_out(row, cutoff) for row in rows], total=total, limit=limit, offset=offset)
+        return RestaurantList(items=[restaurant_out(row, cutoff) for row in rows], total=total, limit=limit, offset=offset)
 
     def detail(self, restaurant_id: int) -> RestaurantDetail:
         self._get_or_404(restaurant_id)

@@ -9,6 +9,7 @@ from app.repositories.stats_repo import StatsRepository
 from app.repositories.visit_repo import VisitRepository
 from app.services.place_service import PlaceService
 from app.services.recommendation_service import RecommendationService
+from app.services.restaurant_search_service import RestaurantSearchService
 from app.services.restaurant_service import RestaurantService
 from app.services.stats_service import StatsService
 from app.services.visit_service import VisitService
@@ -31,3 +32,7 @@ def get_stats_service(db: Session = Depends(get_db)) -> StatsService:
 
 def get_place_service(db: Session = Depends(get_db)) -> PlaceService:
     return PlaceService(PlaceRepository(db))
+
+
+def get_restaurant_search_service(db: Session = Depends(get_db)) -> RestaurantSearchService:
+    return RestaurantSearchService(RestaurantRepository(db), PlaceRepository(db))

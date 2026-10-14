@@ -8,19 +8,18 @@ import { restaurantDetailView } from './views/restaurantDetail.js';
 import { restaurantFormView } from './views/restaurantForm.js';
 import { visitsView } from './views/visits.js';
 import { statsView } from './views/stats.js';
-import { exploreView } from './views/explore.js';
 
 const routes = [
   { path: '/', name: 'recommend', view: recommendView },
   { path: '/restaurants', name: 'restaurants', view: restaurantListView },
   { path: '/restaurants/new', name: 'restaurants', view: restaurantFormView },
-  { path: '/restaurants/explore', name: 'restaurants', view: exploreView },
+  { path: '/restaurants/explore', name: 'restaurants', view: () => redirectTo('/restaurants') },
   { path: '/restaurants/:id/edit', name: 'restaurants', view: restaurantFormView },
   { path: '/restaurants/:id', name: 'restaurants', view: restaurantDetailView },
   { path: '/visits', name: 'visits', view: visitsView },
   { path: '/visits/stats', name: 'visits', view: statsView },
   { path: '/stats', name: 'visits', view: () => redirectTo('/visits/stats') },
-  { path: '/explore', name: 'restaurants', view: () => redirectTo('/restaurants/explore') },
+  { path: '/explore', name: 'restaurants', view: () => redirectTo('/restaurants') },
 ];
 
 // 예전 '#/explore', '#/stats' 링크 호환: 쿼리를 보존한 채 새 경로로 교체한다.

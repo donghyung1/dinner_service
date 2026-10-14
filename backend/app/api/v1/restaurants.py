@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from app.api.deps import get_restaurant_service
+from app.api.deps import get_restaurant_search_service, get_restaurant_service
 from app.models import Category, RestaurantSort, RestaurantStatus
 from app.schemas.restaurant import (
     FavoriteUpdate,
@@ -12,11 +12,14 @@ from app.schemas.restaurant import (
     RestaurantOut,
     RestaurantUpdate,
 )
+from app.schemas.search import RestaurantSearchOut, SearchItem
 from app.schemas.types import PriceLevelList
+from app.services.restaurant_search_service import RestaurantSearchService
 from app.services.restaurant_service import RestaurantService
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 Svc = Annotated[RestaurantService, Depends(get_restaurant_service)]
+SearchSvc = Annotated[RestaurantSearchService, Depends(get_restaurant_search_service)]
 
 
 @router.get("", response_model=RestaurantList)
@@ -46,6 +49,50 @@ def list_restaurants(
 @router.post("", response_model=RestaurantOut, status_code=201)
 def create_restaurant(body: RestaurantCreate, svc: Svc):
     return svc.create(body)
+
+
+def _clean(v: str | None) -> str | None:
+    v = (v or "").strip()
+    return v or None
+
+
+# 고정 경로 /search 는 /{restaurant_id} 보다 먼저 선언해야 한다.
+@router.get("/search", response_model=RestaurantSearchOut)
+def search_restaurants(
+    svc: SearchSvc,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    category: Annotated[list[Category] | None, Query()] = None,
+    sigungu: Annotated[str | None, Query(max_length=30)] = None,
+    dong: Annotated[str | None, Query(max_length=30)] = None,
+    price_level: Annotated[PriceLevelList | None, Query()] = None,
+    status: RestaurantStatus | None = None,
+    is_favorite: bool | None = None,
+    sort: RestaurantSort = RestaurantSort.CREATED_DESC,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return svc.search(
+        q=_clean(q), categories=category, sigungu=_clean(sigungu), dong=_clean(dong), price_levels=price_level,
+        status=status, is_favorite=is_favorite, mine_only=False, sort=sort, limit=limit, offset=offset,
+    )
+
+
+@router.get("/search/random", response_model=SearchItem)
+def random_restaurant(
+    svc: SearchSvc,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    category: Annotated[list[Category] | None, Query()] = None,
+    sigungu: Annotated[str | None, Query(max_length=30)] = None,
+    dong: Annotated[str | None, Query(max_length=30)] = None,
+    price_level: Annotated[PriceLevelList | None, Query()] = None,
+    status: RestaurantStatus | None = None,
+    is_favorite: bool | None = None,
+    mine_only: bool = False,
+):
+    return svc.random(
+        q=_clean(q), categories=category, sigungu=_clean(sigungu), dong=_clean(dong), price_levels=price_level,
+        status=status, is_favorite=is_favorite, mine_only=mine_only, sort=RestaurantSort.CREATED_DESC,
+    )
 
 
 @router.get("/{restaurant_id}", response_model=RestaurantDetail)

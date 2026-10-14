@@ -73,13 +73,13 @@ uv run python -m app.scripts.import_places data/<파일>.csv --sido 서울특별
 - 먼저 `--dry-run` 으로 요약을 보고, 출력되는 "매핑되지 않아 ETC로 적재된 중분류명"으로 `backend/app/scripts/place_mapping.py` 를 보정한 뒤 재실행한다.
 - 검색 API: `GET /api/v1/places?q=역삼 김밥&category=SNACK&limit=20` (`q` 2자 이상, 공백 토큰 AND, `limit` 최대 50).
 
-### 동네 식당 둘러보기 (M7)
+### 식당 통합 목록 (M8)
 
-`#/restaurants/explore`(식당 > 동네에서 찾기) 화면에서 임포트한 `places`를 시군구/동/카테고리/키워드로 둘러보고, 조건 내 무작위 추천을 받고, 바로 "가보고 싶음"으로 등록한다. 추가 마이그레이션은 없다.
+`#/restaurants` 화면 하나에서 내 식당과 임포트한 `places`를 키워드/카테고리/시군구/동 필터로 함께 보고(내 식당 먼저, 이어서 공공데이터), 공공데이터 항목은 [추가]로 바로 "가보고 싶음" 내 식당으로 등록하고, 조건 내 무작위 추천을 받는다. 추가 마이그레이션은 없다. 내 식당의 지역 필터는 `place_no` 연결분은 정확히, 나머지는 `location` 문자열 포함 여부로 판정하는 근사다.
 
+- `GET /api/v1/restaurants/search?q&category&sigungu&dong&status&price_level&is_favorite&sort&offset&limit` : `items`(`kind`: `mine`/`place`) + `total`/`mine_total`/`place_total` (`limit` 최대 50). 공공데이터는 키워드·카테고리·지역이 있고 상태·가격대·즐겨찾기 필터가 없을 때만 포함
+- `GET /api/v1/restaurants/search/random?...&mine_only=false` : 합쳐진 후보 중 1건, 없으면 404
 - `GET /api/v1/places/regions?sigungu=` : 시군구(없으면)·동 목록과 건수
-- `GET /api/v1/places/browse?sigungu&dong&category&q&offset&limit` : `items` + `total` (이름순, `limit` 최대 50)
-- `GET /api/v1/places/random?sigungu&dong&category&q&exclude_registered=true` : 1건, 없으면 404
 
 ## 3. 프레젠테이션 계층 (Vanilla JS + Vite)
 
@@ -93,7 +93,7 @@ npm run dev                 # 개발 서버 :5173 (/api 는 백엔드로 프록�
 npm run build && npm run preview   # dist/ 빌드 후 :4173 에서 서빙 (CORS 에 해당 Origin 추가 필요)
 ```
 
-해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` (기록 > 월간 회고는 `#/visits/stats`; 예전 `#/stats`는 여기로 리다이렉트) (식당 > 동네에서 찾기는 `#/restaurants/explore`, 필터는 `?sigungu=&dong=&category=&q=`; 예전 `#/explore`는 여기로 리다이렉트).
+해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` (기록 > 월간 회고는 `#/visits/stats`; 예전 `#/stats`는 여기로 리다이렉트) (식당 화면은 내 식당과 동네 식당을 한 목록으로 보여주며 필터는 `?q=&category=&sigungu=&dong=&status=&price_level=&fav=1&sort=`; 예전 `#/restaurants/explore`, `#/explore`는 `#/restaurants`로 리다이렉트).
 구조: `src/{main.js, router.js, api/client.js, views/, components/, styles/}`.
 
 ## 환경변수

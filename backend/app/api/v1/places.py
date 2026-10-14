@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import get_place_service
 from app.core.errors import UnprocessableError
 from app.models import Category
-from app.schemas.place import PlaceBrowse, PlaceList, PlaceOut, RegionList
+from app.schemas.place import PlaceList, RegionList
 from app.services.place_service import PlaceService
 
 router = APIRouter(prefix="/places", tags=["places"])
@@ -36,33 +36,3 @@ def list_regions(
     sigungu: Annotated[str | None, Query(max_length=30)] = None,
 ):
     return svc.regions(sigungu=_clean(sigungu))
-
-
-@router.get("/browse", response_model=PlaceBrowse)
-def browse_places(
-    svc: Annotated[PlaceService, Depends(get_place_service)],
-    sigungu: Annotated[str | None, Query(max_length=30)] = None,
-    dong: Annotated[str | None, Query(max_length=30)] = None,
-    category: Annotated[list[Category] | None, Query()] = None,
-    q: Annotated[str | None, Query(max_length=50)] = None,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=50)] = 20,
-):
-    return svc.browse(
-        sigungu=_clean(sigungu), dong=_clean(dong), categories=category, q=_clean(q), offset=offset, limit=limit
-    )
-
-
-@router.get("/random", response_model=PlaceOut)
-def random_place(
-    svc: Annotated[PlaceService, Depends(get_place_service)],
-    sigungu: Annotated[str | None, Query(max_length=30)] = None,
-    dong: Annotated[str | None, Query(max_length=30)] = None,
-    category: Annotated[list[Category] | None, Query()] = None,
-    q: Annotated[str | None, Query(max_length=50)] = None,
-    exclude_registered: bool = True,
-):
-    return svc.random(
-        sigungu=_clean(sigungu), dong=_clean(dong), categories=category, q=_clean(q),
-        exclude_registered=exclude_registered,
-    )
