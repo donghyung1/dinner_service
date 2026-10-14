@@ -1,8 +1,10 @@
+import '../styles/stats.css';
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
 import { emptyState, errorState, spinner, visitTabs } from '../components/ui.js';
 import { categoryLabel } from '../constants.js';
-import { icon, iconButton, iconLabel } from '../components/icon.js';
+import { icon, iconButton } from '../components/icon.js';
+import { renderShareCard, openShareDialog, shareAltText } from '../components/shareCard.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 const monthOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -11,6 +13,11 @@ const pct = (x) => `${Math.round(x * 1000) / 10}%`;
 function shiftMonth(m, delta) {
   const [y, mo] = m.split('-').map(Number);
   return monthOf(new Date(y, mo - 1 + delta, 1));
+}
+// 'YYYY-MM-DD' -> 'M월 D일'
+function shortDate(iso) {
+  const [, mo, d] = String(iso).split('-').map(Number);
+  return `${mo}월 ${d}일`;
 }
 function monthLabel(m) {
   const [y, mo] = m.split('-');
@@ -26,6 +33,22 @@ export function statsView(outlet, _params, ctx) {
   const prev = iconButton({ name: 'chevron-left', label: '이전 달', onClick: () => go(-1) });
   const next = iconButton({ name: 'chevron-right', label: '다음 달', onClick: () => go(1) });
   const title = h('h2', { class: 'month-title' });
+  const shareBar = h('div', { class: 'share-bar' });
+  let sharing = false;
+
+  async function share(data, btn) {
+    if (sharing) return;
+    sharing = true;
+    btn.disabled = true;
+    const label = monthLabel(month);
+    try {
+      const canvas = await renderShareCard(data, label);
+      await openShareDialog(canvas, { filename: `dinner-${month}.png`, title: `${label} 회고`, alt: shareAltText(data, label) });
+    } finally {
+      sharing = false;
+      btn.disabled = false;
+    }
+  }
 
   function go(delta) {
     const m = shiftMonth(month, delta);
@@ -36,13 +59,14 @@ export function statsView(outlet, _params, ctx) {
 
   function stat(label, value, sub, iconName) {
     return h('div', { class: 'card stat' }, [
-      h('p', { class: 'stat-label' }, iconLabel(iconName, label)),
+      h('p', { class: 'stat-label' }, h('span', { class: 'icon-label' }, [icon(iconName), label])),
       h('p', { class: 'stat-value' }, value),
       sub && h('p', { class: 'muted small' }, sub),
     ]);
   }
 
   function render(d) {
+    shareBar.replaceChildren();
     const total = d.total_visits ?? 0;
     const skip = stat('넘긴 횟수', `${d.skip_count ?? 0}회`, '다시 뽑기 기준', 'skip');
     if (total === 0) {
@@ -54,6 +78,8 @@ export function statsView(outlet, _params, ctx) {
     }
     const acc = d.recommendation || {};
     const accValue = acc.accept_ratio == null ? '-' : pct(acc.accept_ratio);
+    const shareBtn = iconButton({ name: 'share', label: '공유 카드 만들기', text: '공유 카드 만들기', cls: 'btn btn-primary', onClick: () => share(d, shareBtn) });
+    shareBar.append(shareBtn);
     const dist = d.category_distribution || [];
     const maxCount = Math.max(1, ...dist.map((c) => c.count));
     const st = d.longest_category_streak;
@@ -77,7 +103,7 @@ export function statsView(outlet, _params, ctx) {
 
     let streak = h('p', { class: 'muted' }, '-');
     if (st) {
-      const range = st.from === st.to ? st.from : `${st.from} ~ ${st.to}`;
+      const range = st.from === st.to ? shortDate(st.from) : `${shortDate(st.from)} ~ ${shortDate(st.to)}`;
       streak = h('p', {}, [h('strong', {}, `${categoryLabel(st.category)} ${st.length}번 연속`), ` (${range})`]);
     }
 
@@ -100,6 +126,7 @@ export function statsView(outlet, _params, ctx) {
     const my = ++seq;
     title.textContent = monthLabel(month);
     next.disabled = month >= nowMonth;
+    shareBar.replaceChildren();
     body.setAttribute('aria-busy', 'true');
     body.replaceChildren(spinner());
     try {
@@ -118,6 +145,7 @@ export function statsView(outlet, _params, ctx) {
       h('div', { class: 'page-head' }, h('h1', {}, [icon('notebook-pen', { size: '1.1em' }), '기록'])),
       visitTabs('stats'),
       h('div', { class: 'month-nav' }, [prev, title, next]),
+      shareBar,
       body,
     ]),
   );

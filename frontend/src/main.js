@@ -31,12 +31,11 @@ function redirectTo(path) {
   window.location.replace(`#${path}${q ? `?${q}` : ''}`);
 }
 
-// 상단 메뉴: 글자는 스크린리더용(sr-only)으로만 남기고 아이콘으로 보여 준다.
+// 주 메뉴: 아이콘 + 보이는 짧은 글자. (모바일에서는 CSS 가 하단 탭 바로 배치한다)
 document.querySelectorAll('#nav a').forEach((a) => {
   const text = a.textContent.trim();
-  a.setAttribute('aria-label', text);
-  a.title = text;
-  a.replaceChildren(icon(a.dataset.icon, { size: '1.4em' }), h('span', { class: 'sr-only' }, text));
+  a.removeAttribute('title');
+  a.replaceChildren(icon(a.dataset.icon, { size: '1.4em' }), h('span', { class: 'nav-text' }, text));
 });
 
 function notFound(outlet) {

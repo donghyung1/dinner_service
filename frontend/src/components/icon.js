@@ -4,6 +4,7 @@ import {
   CircleCheck, CircleX, Coins, Dices, Footprints, History, Hourglass, Info, Landmark, ListChecks, MapPin, NotebookPen,
   Pencil, Plus, RotateCcw, RotateCw, Repeat, Save, Search, SlidersHorizontal, SkipForward, Sparkles, Star,
   StickyNote, Tag, ThumbsUp, Trash2, Trophy, TriangleAlert, Unlink, Utensils, Wallet, X, List, Layers,
+  Share2, Download, Compass, Store, Ellipsis, Funnel,
 } from 'lucide';
 import { h } from './dom.js';
 
@@ -16,6 +17,7 @@ const ICONS = {
   'rotate-cw': RotateCw, repeat: Repeat, save: Save, search: Search, sliders: SlidersHorizontal, skip: SkipForward,
   sparkles: Sparkles, star: Star, note: StickyNote, tag: Tag, 'thumbs-up': ThumbsUp, trash: Trash2, trophy: Trophy,
   alert: TriangleAlert, unlink: Unlink, utensils: Utensils, wallet: Wallet, x: X,
+  share: Share2, download: Download, compass: Compass, store: Store, more: Ellipsis, funnel: Funnel,
 };
 
 /** 장식용 SVG 아이콘(스크린리더에서 숨김). fill: true 면 면을 currentColor 로 채운다. */

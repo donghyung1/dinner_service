@@ -1,0 +1,25 @@
+/* 식당 화면: 내 식당 / 동네 탐색 분할 탭, 카테고리 글리프 */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0 0 1rem; border: 1.5px solid var(--ink); border-radius: var(--radius); overflow: hidden; background: var(--paper); }
+.seg-tab { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .4rem .75rem; font-weight: 700; color: var(--ink); text-decoration: none; }
+.seg-tab + .seg-tab { border-left: 1.5px solid var(--ink); }
+.seg-tab:hover { background: var(--hover); }
+.seg-tab[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.seg-tab:focus-visible { outline: 3px solid var(--pot); outline-offset: -4px; }
+.seg-tab[aria-current="page"]:focus-visible { outline-color: var(--paper); }
+
+.list-tools { display: flex; align-items: center; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap; margin: 0 0 .4rem; }
+.list-more .btn { min-width: 160px; }
+
+.cat-glyph { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1rem; color: var(--ink); border: 1px solid var(--line); background: var(--steel); }
+.cat-KOREAN { background: #CFE6D8; }
+.cat-CHINESE { background: #F4E3A8; }
+.cat-JAPANESE { background: #D3DCF0; }
+.cat-WESTERN { background: #E2D8EE; }
+.cat-SNACK { background: #F3DCC2; }
+.cat-ETC { background: #DCE1DE; }
+
+.item-lead { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1; }
+.item-lead .item-main { flex: 1; }
+.place-added { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); font-weight: 600; }
+.row .place-add { flex: none; }

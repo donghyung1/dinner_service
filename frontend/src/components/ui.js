@@ -29,7 +29,7 @@ export function errorState(err, onRetry) {
 
 export function visitTabs(active) {
   const tab = (key, href, iconName, text) =>
-    h('a', { class: 'tab', href, 'aria-label': text, title: text, ...(active === key ? { 'aria-current': 'page' } : {}) }, icon(iconName));
+    h('a', { class: 'tab', href, ...(active === key ? { 'aria-current': 'page' } : {}) }, [icon(iconName), h('span', {}, text)]);
   return h('nav', { class: 'tabs', 'aria-label': '기록 보기' }, [
     tab('list', '#/visits', 'list', '방문 기록'),
     tab('stats', '#/visits/stats', 'chart', '월간 회고'),
@@ -50,9 +50,8 @@ export function restaurantBadges(r) {
     r.price_level != null && badge(priceLabel(r.price_level), 'badge-price', { icon: 'wallet' }),
     badge(statusLabel(r.status), r.status === 'REGULAR' ? 'badge-regular' : 'badge-wish', {
       icon: r.status === 'REGULAR' ? 'repeat' : 'bookmark',
-      iconOnly: true,
     }),
-    r.is_expiring && badge('곧 잊혀짐', 'badge-expiring', { icon: 'hourglass', iconOnly: true }),
+    r.is_expiring && badge('곧 잊혀짐', 'badge-expiring', { icon: 'hourglass' }),
   ]);
 }
 
@@ -112,18 +111,45 @@ export function favoriteButton(r, onChange) {
     btn.setAttribute('aria-label', `${r.name} 즐겨찾기`);
     btn.title = r.is_favorite ? '즐겨찾기 해제' : '즐겨찾기 추가';
   };
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
+  const pop = () => {
+    btn.classList.remove('pop');
+    void btn.offsetWidth; // 애니메이션 재시작
+    btn.classList.add('pop');
+  };
+  // 낙관적 갱신: 먼저 화면을 바꾸고 서버에는 백그라운드로 보낸다.
+  // 요청이 진행 중이면 새 요청을 겹치지 않고, 끝난 뒤 최신 희망 상태를 한 번 더 보낸다.
+  let confirmed = Boolean(r.is_favorite); // 서버가 확인한 마지막 상태
+  let inFlight = false;
+  async function sync() {
+    if (inFlight) return;
+    inFlight = true;
     try {
-      const updated = await api.setFavorite(r.id, !r.is_favorite);
-      r.is_favorite = updated.is_favorite;
-      paint();
-      onChange?.(r);
-    } catch (e) {
-      showToast(e.message, 'error');
+      while (Boolean(r.is_favorite) !== confirmed) {
+        const want = Boolean(r.is_favorite);
+        try {
+          const updated = await api.setFavorite(r.id, want);
+          confirmed = Boolean(updated.is_favorite);
+          if (Boolean(r.is_favorite) === want) {
+            r.is_favorite = confirmed;
+            paint();
+          }
+          onChange?.(r);
+        } catch (e) {
+          r.is_favorite = confirmed; // 실패: 서버 상태로 되돌린다
+          paint();
+          showToast(e.message, 'error');
+          break;
+        }
+      }
     } finally {
-      btn.disabled = false;
+      inFlight = false;
     }
+  }
+  btn.addEventListener('click', () => {
+    r.is_favorite = !r.is_favorite;
+    paint();
+    pop();
+    sync();
   });
   paint();
   return btn;
@@ -200,6 +226,7 @@ export function confirmDialog({ title, message, confirmText = '확인', danger =
     const overlay = h('div', { class: 'overlay' }, box);
     const close = (v) => {
       document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('hashchange', onNav);
       overlay.remove();
       prev?.focus?.();
       resolve(v);
@@ -216,6 +243,9 @@ export function confirmDialog({ title, message, confirmText = '확인', danger =
     ok.addEventListener('click', () => close(true));
     cancel.addEventListener('click', () => close(false));
     overlay.addEventListener('click', (e) => e.target === overlay && close(false));
+    // 다른 화면으로 이동하면 취소로 닫는다.
+    const onNav = () => close(false);
+    window.addEventListener('hashchange', onNav);
     document.addEventListener('keydown', onKey, true);
     document.body.append(overlay);
     cancel.focus();

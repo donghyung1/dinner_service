@@ -1,12 +1,49 @@
 import { api } from '../api/client.js';
-import { h } from '../components/dom.js';
+import { h, nextId } from '../components/dom.js';
 import { confirmDialog, emptyState, errorState, field, pager, spinner, visitTabs } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
 import { badge } from '../components/ui.js';
 import { icon, iconButton } from '../components/icon.js';
+import { relativeDateWithDay, timeEl, fullDate } from '../components/date.js';
 
 const LIMIT = 20;
 const state = { from: '', to: '', offset: 0 };
+
+/** 행 더보기(⋯) 버튼과 메뉴. items: [{ text, icon, danger, onSelect }] */
+function moreMenu(label, items) {
+  const menuId = nextId('menu');
+  const btn = h('button', { type: 'button', class: 'btn btn-ghost btn-icon', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': menuId, 'aria-label': label, title: '더보기' }, icon('more'));
+  const entries = items.map((it) => h('button', { type: 'button', role: 'menuitem', class: `menu-item${it.danger ? ' danger' : ''}`, tabindex: '-1' }, [icon(it.icon), h('span', {}, it.text)]));
+  const menu = h('div', { id: menuId, class: 'menu', role: 'menu', 'aria-label': label, hidden: true }, entries);
+  const wrap = h('div', { class: 'more-wrap' }, [btn, menu]);
+
+  const onDoc = (e) => { if (!wrap.contains(e.target)) close(); };
+  const onKey = (e) => {
+    const i = entries.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+    else if (e.key === 'Tab') close();
+    else if (e.key === 'ArrowDown') { e.preventDefault(); entries[(i + 1) % entries.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); entries[(i - 1 + entries.length) % entries.length].focus(); }
+  };
+  function open() {
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('click', onDoc, true);
+    document.addEventListener('keydown', onKey, true);
+    entries[0].focus();
+  }
+  function close(refocus = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey, true);
+    if (refocus) btn.focus();
+  }
+  btn.addEventListener('click', () => (menu.hidden ? open() : close(true)));
+  entries.forEach((el, i) => el.addEventListener('click', () => { close(); items[i].onSelect(); }));
+  return wrap;
+}
 
 export function visitsView(outlet, _params, ctx) {
   const box = h('div', { class: 'list-box', 'aria-live': 'polite' });
@@ -52,13 +89,11 @@ export function visitsView(outlet, _params, ctx) {
     for (const [date, items] of groups) {
       out.push(
         h('section', { class: 'day' }, [
-          h('h2', { class: 'day-title' }, date),
+          h('h2', { class: 'day-title' }, timeEl(date, relativeDateWithDay(date))),
           h('ul', { class: 'cards' }, items.map((v) => {
             const name = v.restaurant_name;
-            const del = iconButton({ name: 'trash', label: `${name} ${v.visited_on} 기록 삭제`, cls: 'btn btn-danger-ghost' });
-            del.title = '삭제';
-            del.addEventListener('click', async () => {
-              const ok = await confirmDialog({ title: '방문 기록을 삭제할까요?', message: `${v.visited_on} ${name}`, confirmText: '삭제', danger: true });
+            const remove = async () => {
+              const ok = await confirmDialog({ title: '방문 기록을 삭제할까요?', message: `${fullDate(v.visited_on)} ${name}`, confirmText: '삭제', danger: true });
               if (!ok) return;
               try {
                 await api.deleteVisit(v.id);
@@ -67,14 +102,15 @@ export function visitsView(outlet, _params, ctx) {
               } catch (e) {
                 showToast(e.message, 'error');
               }
-            });
+            };
+            const more = moreMenu(`${name} ${v.visited_on} 기록 메뉴`, [{ text: '기록 삭제', icon: 'trash', danger: true, onSelect: remove }]);
             return h('li', { class: 'row item' }, [
               h('div', { class: 'item-main' }, [
                 h('a', { class: 'item-name', href: `#/restaurants/${v.restaurant_id}` }, name),
                 v.note && h('p', { class: 'muted small' }, v.note),
-                v.source === 'RECOMMENDATION' ? badge('추천', '', { icon: 'dices', iconOnly: true }) : badge('직접 기록', '', { icon: 'pencil', iconOnly: true }),
+                v.source === 'RECOMMENDATION' ? badge('추천', '', { icon: 'dices' }) : badge('직접 기록', '', { icon: 'pencil' }),
               ]),
-              del,
+              more,
             ]);
           })),
         ]),
@@ -101,11 +137,14 @@ export function visitsView(outlet, _params, ctx) {
     h('section', { class: 'page' }, [
       h('div', { class: 'page-head' }, h('h1', {}, [icon('notebook-pen', { size: '1.1em' }), '기록'])),
       visitTabs('list'),
-      h('form', { class: 'panel', onSubmit: apply }, [
-        h('div', { class: 'row-fields' }, [fF, tF]),
-        h('div', { class: 'actions' }, [
-          h('button', { class: 'btn btn-icon', type: 'submit', 'aria-label': '조회', title: '조회' }, icon('search')),
-          iconButton({ name: 'rotate-ccw', label: '초기화', cls: 'btn btn-ghost', onClick: () => { from.value = ''; to.value = ''; apply(); } }),
+      h('details', { class: 'fold', open: Boolean(state.from || state.to) }, [
+        h('summary', {}, [icon('calendar'), h('span', {}, '기간 선택'), (state.from || state.to) && h('span', { class: 'fold-badge' }, `${state.from || '처음'} ~ ${state.to || '오늘'}`)]),
+        h('form', { class: 'fold-body', onSubmit: apply }, [
+          h('div', { class: 'row-fields' }, [fF, tF]),
+          h('div', { class: 'actions' }, [
+            h('button', { class: 'btn btn-primary', type: 'submit' }, [icon('search'), h('span', {}, '조회')]),
+            h('button', { class: 'btn btn-ghost', type: 'button', onClick: () => { from.value = ''; to.value = ''; apply(); } }, [icon('rotate-ccw'), h('span', {}, '초기화')]),
+          ]),
         ]),
       ]),
       box,

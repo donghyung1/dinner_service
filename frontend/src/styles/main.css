@@ -40,9 +40,21 @@ a { color: var(--ink); text-underline-offset: 2px; }
   display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem max(1rem, calc((100% - 720px) / 2 + 1rem)); }
 .brand { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; text-decoration: none; color: var(--ink); letter-spacing: -0.01em; }
 #nav { display: flex; gap: .15rem; }
-#nav a { width: 44px; height: 44px; border-radius: var(--radius); text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+#nav a { min-height: 44px; padding: .25rem .8rem; border-radius: var(--radius); text-decoration: none; color: var(--ink); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
 #nav a:hover { background: var(--hover); }
-#nav a[aria-current='page'] { background: var(--ink); color: var(--paper); }
+#nav a[aria-current='page'] { background: var(--ink); color: var(--paper); font-weight: 800; }
+
+/* 모바일: 하단 고정 탭 바 */
+@media (max-width: 640px) {
+  :root { --tabbar-h: calc(56px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: var(--tabbar-h); }
+  #nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; gap: 0; background: var(--paper); border-top: 1px solid var(--line);
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #nav a { flex: 1 1 0; flex-direction: column; gap: .1rem; min-height: 56px; padding: .3rem .25rem; border-radius: 0; font-size: .75rem; color: var(--muted); font-weight: 600; }
+  #nav a[aria-current='page'] { background: transparent; color: var(--ink); font-weight: 800; box-shadow: inset 0 3px 0 var(--ink); }
+  .toasts { bottom: calc(var(--tabbar-h) + .75rem); }
+  .site-footer { margin-bottom: 1rem; }
+}
 
 main { max-width: 720px; margin: 0 auto; padding: 1.25rem 1rem; outline: none; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
@@ -87,6 +99,9 @@ main { max-width: 720px; margin: 0 auto; padding: 1.25rem 1rem; outline: none; }
 .fav:hover { background: var(--hover); }
 .fav.is-on svg, .icon.is-fav { fill: var(--pot); }
 .fav:not(.is-on) svg { color: var(--muted); }
+
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.fav.pop svg { animation: pop .3s ease-out; }
 
 /* 폼 */
 fieldset { border: none; padding: 0; margin: 0; min-width: 0; }
@@ -249,7 +264,7 @@ textarea { resize: vertical; }
 .stat-grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 0 0 1rem; }
 .stat { padding: .8rem 1rem; display: grid; gap: .1rem; }
 .stat-label { color: var(--muted); margin: 0; }
-.stat-label .icon { width: 1.4em; height: 1.4em; }
+.stat-label .icon { width: 1.2em; height: 1.2em; }
 .stat-value { font-size: 1.5rem; font-weight: 800; margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
 .bar-head { display: flex; justify-content: space-between; gap: .5rem; font-weight: 600; }
@@ -280,7 +295,7 @@ textarea { resize: vertical; }
 
 /* 탭(기록 화면): 아이콘 탭 */
 .tabs { display: flex; gap: .25rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
-.tab { min-width: 56px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tab { min-height: 44px; padding: 0 1rem; gap: .4rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
 .tab:hover { color: var(--ink); background: var(--hover); }
 .tab[aria-current="page"] { border-bottom-color: var(--ink); color: var(--ink); }
 
@@ -296,6 +311,25 @@ textarea { resize: vertical; }
 .filter-detail { margin: .5rem 0; }
 .filter-detail summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; gap: .4rem; }
 .filter-detail > * + * { margin-top: .7rem; }
+
+/* 접이식 영역(기간 선택, 방문 기록 추가) */
+.fold { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 1rem; }
+.fold > summary { cursor: pointer; font-weight: 700; min-height: 44px; padding: 0 1rem; display: flex; align-items: center; gap: .4rem; }
+.fold > summary:hover { background: var(--hover); }
+.fold > .fold-body { padding: .2rem 1rem 1rem; display: grid; gap: .9rem; }
+.fold-badge { margin-left: auto; font-size: .8rem; font-weight: 600; color: var(--muted); }
+
+/* 행 더보기 메뉴 */
+.more-wrap { position: relative; flex: none; }
+.menu { position: absolute; right: 0; top: 100%; z-index: 15; min-width: 9rem; background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  padding: .25rem; box-shadow: 0 4px 14px rgba(30, 42, 71, .16); }
+.menu[hidden] { display: none; }
+.menu-item { width: 100%; font: inherit; font-weight: 600; text-align: left; min-height: 44px; padding: .4rem .7rem; border: 0; background: transparent; border-radius: 4px;
+  color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: .5rem; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--hover); }
+.menu-item.danger { color: var(--stamp); }
+.danger-zone { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--line); display: flex; justify-content: center; }
+.source-badge { font-weight: 600; }
 
 @media (max-width: 480px) {
   .ticket { --stub-w: 5.2rem; }
@@ -315,3 +349,4 @@ textarea { resize: vertical; }
   *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
   .seal { opacity: .94; }
 }
+.btn[hidden] { display: none; }
