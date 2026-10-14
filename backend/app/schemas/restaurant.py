@@ -25,11 +25,17 @@ class RestaurantBase(BaseModel):
 
 
 class RestaurantCreate(RestaurantBase):
-    pass
+    place_no: str | None = Field(default=None, max_length=30)
+
+    @field_validator("place_no")
+    @classmethod
+    def _blank_place_no(cls, v: str | None) -> str | None:
+        v = v.strip() if v else None
+        return v or None
 
 
-class RestaurantUpdate(RestaurantBase):
-    """PUT: 전체 교체. 등록과 동일한 본문."""
+class RestaurantUpdate(RestaurantCreate):
+    """PUT: 전체 교체. 등록과 동일한 본문. place_no를 생략하면 기존 값을 유지한다."""
 
 
 class FavoriteUpdate(BaseModel):
@@ -47,9 +53,13 @@ class RestaurantOut(BaseModel):
     location: str | None
     memo: str | None
     is_favorite: bool
+    place_no: str | None = None
     created_at: datetime
     updated_at: datetime
     last_visited_on: date | None = None
+    is_expiring: bool = False
+    consecutive_skips: int = 0
+    skip_suggestion: bool = False
 
 
 class RestaurantDetail(RestaurantOut):
@@ -73,8 +83,26 @@ class RecommendedRestaurant(BaseModel):
     memo: str | None
     is_favorite: bool
     last_visited_on: date | None
+    is_expiring: bool
+    consecutive_skips: int
+    skip_suggestion: bool
 
 
 class RecommendationOut(BaseModel):
     restaurant: RecommendedRestaurant
     candidate_count: int
+
+
+class CandidatesOut(BaseModel):
+    restaurants: list[RecommendedRestaurant]
+    candidate_count: int
+
+
+class SkipCreate(BaseModel):
+    restaurant_id: int = Field(ge=1)
+
+
+class SkipOut(BaseModel):
+    id: int
+    restaurant_id: int
+    skipped_at: datetime

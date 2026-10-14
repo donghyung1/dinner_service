@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import health, recommendations, restaurants, visits
+from app.api.v1 import health, places, recommendations, restaurants, stats, visits
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 
@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_error_handlers(app)
-    for r in (health.router, restaurants.router, visits.router, recommendations.router):
+    for r in (health.router, restaurants.router, visits.router, recommendations.router, stats.router, places.router):
         app.include_router(r, prefix="/api/v1")
 
     return app

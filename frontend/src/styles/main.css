@@ -152,3 +152,50 @@ textarea { resize: vertical; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .spinner { animation: none; border-top-color: var(--primary); }
 }
+
+/* v0.5: 배지, 제안, 모드, 배너, 토너먼트, 회고 */
+.badge-expiring { background: #fff0c2; color: var(--warn); }
+.suggest { width: 100%; background: #fff4d6; border: 1px solid #ecd08a; border-radius: 10px; padding: .6rem .8rem; display: grid; gap: .4rem; }
+.suggest-title { margin: 0; font-weight: 800; color: var(--warn); }
+.gap-banner { width: 100%; text-align: left; font: inherit; font-weight: 700; padding: .7rem 1rem; margin: 0 0 1rem; border-radius: var(--radius);
+  border: 1.5px dashed var(--primary); background: var(--primary-soft); color: var(--primary-dark); cursor: pointer; min-height: 44px; }
+.gap-banner:hover:not(:disabled) { background: #ffdcc4; }
+.modes { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; }
+.fate-note { margin: 0; color: var(--primary-dark); font-weight: 700; }
+.tournament-head { margin: 0 0 .6rem; font-weight: 700; color: var(--primary-dark); }
+.tournament { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.tournament .card { display: grid; gap: .4rem; align-content: start; }
+.tournament .item-name { font-size: 1.1rem; }
+
+.month-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: 0 0 1rem; }
+.month-title { margin: 0; font-size: 1.2rem; }
+.stat-grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 0 0 1rem; }
+.stat { padding: .8rem 1rem; display: grid; gap: .1rem; }
+.stat-label { color: var(--muted); font-weight: 600; font-size: .875rem; margin: 0; }
+.stat-value { font-size: 1.4rem; font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.bar-head { display: flex; justify-content: space-between; gap: .5rem; font-weight: 600; }
+.bar-track { height: 14px; background: #f1e7dc; border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; counter-reset: rank; }
+.rank li { counter-increment: rank; display: flex; align-items: center; gap: .6rem; padding: .6rem .9rem; }
+.rank li::before { content: counter(rank); font-weight: 800; color: var(--primary-dark); min-width: 1.2rem; }
+.rank li.top { border-color: var(--primary); border-width: 2px; font-weight: 800; }
+.rank .count { margin-left: auto; color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+/* v0.6 공공데이터 카탈로그 */
+.place-finder { gap: .6rem; }
+.place-title { margin: 0; font-size: 1.05rem; }
+.place-results { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.place-results li { padding: 0; }
+.place-item { width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 0; border-bottom: 1px dashed var(--line);
+  padding: .6rem .4rem; min-height: 44px; display: grid; gap: .15rem; cursor: pointer; }
+.place-item:hover, .place-item:focus-visible { background: var(--primary-soft); }
+.place-name { font-weight: 700; overflow-wrap: anywhere; }
+.place-addr { overflow-wrap: anywhere; margin: 0; }
+.source { font-size: .78rem; }
+.place-linkbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.place-linkbar[hidden], .place-linkbar .warn[hidden] { display: none; }
+.place-linked { flex: 1 1 auto; }
+.btn-link { min-height: 36px; padding: .2rem .8rem; font-size: .85rem; }
+.site-footer { max-width: 720px; margin: 1.5rem auto 2rem; padding: 0 1rem; font-size: .75rem; color: var(--muted); text-align: center; overflow-wrap: anywhere; }

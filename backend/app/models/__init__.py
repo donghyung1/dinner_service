@@ -1,5 +1,16 @@
 from app.models.base import Base
 from app.models.enums import Category, RestaurantSort, RestaurantStatus, VisitSource
-from app.models.restaurant import Restaurant, Visit
+from app.models.place import Place
+from app.models.restaurant import RecommendationSkip, Restaurant, Visit
 
-__all__ = ["Base", "Category", "RestaurantSort", "RestaurantStatus", "Restaurant", "Visit", "VisitSource"]
+__all__ = [
+    "Base",
+    "Category",
+    "Place",
+    "RecommendationSkip",
+    "RestaurantSort",
+    "RestaurantStatus",
+    "Restaurant",
+    "Visit",
+    "VisitSource",
+]

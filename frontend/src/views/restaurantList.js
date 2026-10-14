@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { chipGroup, emptyState, errorState, favoriteButton, field, pager, restaurantBadges, selectEl, spinner } from '../components/ui.js';
+import { chipGroup, emptyState, errorState, favoriteButton, field, pager, restaurantBadges, selectEl, skipSuggestion, spinner } from '../components/ui.js';
 import { CATEGORIES, PRICES, SORTS, STATUSES } from '../constants.js';
 
 const LIMIT = 20;
@@ -60,6 +60,7 @@ export function restaurantListView(outlet, _params, ctx) {
             h('h2', { class: 'item-name' }, h('a', { href: `#/restaurants/${r.id}` }, r.name)),
             restaurantBadges(r),
             r.location && h('p', { class: 'muted small' }, r.location),
+            skipSuggestion(r, (kind) => kind === 'deleted' && load()),
           ]),
           favoriteButton(r),
         ]),

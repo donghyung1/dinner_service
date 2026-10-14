@@ -3,7 +3,8 @@ import { h } from '../components/dom.js';
 import { errorState, field, selectEl, spinner } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
 import { navigate } from '../router.js';
-import { CATEGORIES, PRICES, STATUSES } from '../constants.js';
+import { placeFinder } from '../components/placeFinder.js';
+import { CATEGORIES, PRICES, STATUSES, placeToFormValues } from '../constants.js';
 
 /** 백엔드 제약(name 1~100, location ≤255, memo ≤1000, price 1~4)을 그대로 반영한 검증. */
 export function validate(v) {
@@ -23,6 +24,7 @@ export function restaurantFormView(outlet, params, ctx) {
   const editId = params.id;
   const root = h('section', { class: 'page' });
   outlet.replaceChildren(root);
+  let finderBox = null;
 
   async function init() {
     if (!editId) return build(null);
@@ -56,6 +58,37 @@ export function restaurantFormView(outlet, params, ctx) {
     const dupWarn = h('p', { class: 'warn', role: 'status' });
     F.name.append(dupWarn);
 
+    // 공공데이터에서 고른 경우의 상가업소번호(숨은 값). 폼 값을 고쳐도 연결은 유지한다.
+    let placeNo = null;
+    const placeNote = h('p', { class: 'hint place-linked', role: 'status' });
+    const placeWarn = h('p', { class: 'warn', role: 'status' });
+    const unlink = h('button', { type: 'button', class: 'btn btn-link' }, '연결 해제');
+    unlink.addEventListener('click', () => setPlace(null));
+    const placeBar = h('div', { class: 'place-linkbar' }, [placeNote, unlink, placeWarn]);
+    placeBar.hidden = true;
+
+    function setPlace(p) {
+      placeNo = p ? p.place_no : null;
+      placeBar.hidden = !p;
+      placeNote.textContent = p ? `공공데이터 항목과 연결됨: ${p.name}${p.branch_name ? ` ${p.branch_name}` : ''}` : '';
+      placeWarn.textContent = p?.already_registered ? '이미 등록된 식당이에요. 지점이 다르다면 그대로 저장해도 돼요.' : '';
+      placeWarn.hidden = !placeWarn.textContent;
+    }
+
+    const finder = finderBox = editId
+      ? null
+      : placeFinder({
+          onSelect(p) {
+            const v = placeToFormValues(p);
+            name.value = v.name;
+            location.value = v.location;
+            category.value = v.category;
+            setPlace(p);
+            dupWarn.textContent = '';
+            name.focus();
+          },
+        });
+
     name.addEventListener('blur', async () => {
       dupWarn.textContent = '';
       const n = name.value.trim();
@@ -73,6 +106,7 @@ export function restaurantFormView(outlet, params, ctx) {
     const formErr = h('p', { class: 'field-error', role: 'alert' });
 
     const form = h('form', { class: 'panel', novalidate: true }, [
+      placeBar,
       F.name, F.category, F.status, F.price_level, F.location, F.memo,
       h('div', { class: 'check' }, [fav, h('label', { for: 'is-fav' }, '즐겨찾기')]),
       formErr,
@@ -107,6 +141,7 @@ export function restaurantFormView(outlet, params, ctx) {
         memo: values.memo.trim() || null,
         is_favorite: fav.checked,
       };
+      if (!editId) body.place_no = placeNo; // 수정(PUT)에서는 생략해 기존 연결을 유지한다
       submit.disabled = true;
       try {
         const saved = editId ? await api.updateRestaurant(editId, body) : await api.createRestaurant(body);
@@ -130,9 +165,10 @@ export function restaurantFormView(outlet, params, ctx) {
       }
     });
 
-    root.replaceChildren(h('h1', {}, editId ? '식당 수정' : '식당 추가'), form);
-    name.focus();
+    root.replaceChildren(h('h1', {}, editId ? '식당 수정' : '식당 추가'), finder, form);
+    (finder?.querySelector('input') ?? name).focus();
   }
 
   init();
+  return () => finderBox?.destroy();
 }

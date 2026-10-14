@@ -26,6 +26,11 @@ class NoCandidatesError(NotFoundError):
     code = "NO_CANDIDATES"
 
 
+class UnprocessableError(AppError):
+    status_code = 422
+    code = "VALIDATION_ERROR"
+
+
 def error_body(code: str, message: str, details: list | None = None) -> dict:
     err: dict = {"code": code, "message": message}
     if details is not None:

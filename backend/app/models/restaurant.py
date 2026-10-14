@@ -19,6 +19,7 @@ class Restaurant(Base):
         CheckConstraint("price_level BETWEEN 1 AND 4", name="chk_restaurants_price_level"),
         Index("idx_restaurants_category_status", "category", "status"),
         Index("idx_restaurants_name", "name"),
+        Index("idx_restaurants_place_no", "place_no"),
     )
 
     id: Mapped[int] = mapped_column(BigIntId, primary_key=True, autoincrement=True)
@@ -36,7 +37,14 @@ class Restaurant(Base):
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
+    skip_dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 카탈로그(places.place_no)에서 골라 등록한 경우의 상가업소번호. FK 없는 논리적 참조.
+    place_no: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
     visits: Mapped[list[Visit]] = relationship(
+        back_populates="restaurant", cascade="all, delete-orphan", passive_deletes=True
+    )
+    skips: Mapped[list[RecommendationSkip]] = relationship(
         back_populates="restaurant", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -64,3 +72,19 @@ class Visit(Base):
     @property
     def restaurant_name(self) -> str:
         return self.restaurant.name
+
+
+class RecommendationSkip(Base):
+    __tablename__ = "recommendation_skips"
+    __table_args__ = (
+        Index("idx_skips_restaurant_time", "restaurant_id", "skipped_at"),
+        Index("idx_skips_time", "skipped_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigIntId, primary_key=True, autoincrement=True)
+    restaurant_id: Mapped[int] = mapped_column(
+        BigIntId, ForeignKey("restaurants.id", ondelete="CASCADE", name="fk_skips_restaurant"), nullable=False
+    )
+    skipped_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    restaurant: Mapped[Restaurant] = relationship(back_populates="skips")

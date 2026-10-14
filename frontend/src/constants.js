@@ -31,3 +31,13 @@ export function todayISO() {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+// 공공데이터 출처 표기 (FR-86). 라이선스(공공누리 유형 등) 확인 결과에 따라 이 한 곳만 수정한다.
+export const DATA_SOURCE_NOTICE =
+  '식당 검색 데이터 출처: 공공데이터포털 소상공인시장진흥공단_상가(상권)정보 (공공데이터포털 data.go.kr)';
+
+/** 공공데이터 항목 -> 폼 값 (PRD 5.11.4 채움 규칙). */
+export function placeToFormValues(p) {
+  const name = p.branch_name ? `${p.name} ${p.branch_name}` : p.name;
+  return { name: name.slice(0, 100), location: (p.location || '').slice(0, 255), category: p.category, place_no: p.place_no };
+}

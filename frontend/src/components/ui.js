@@ -35,7 +35,54 @@ export function restaurantBadges(r) {
     badge(categoryLabel(r.category), 'badge-cat'),
     r.price_level != null && badge(priceLabel(r.price_level)),
     badge(statusLabel(r.status), r.status === 'REGULAR' ? 'badge-regular' : 'badge-wish'),
+    r.is_expiring && badge('곧 잊혀짐', 'badge-expiring'),
   ]);
+}
+
+/**
+ * "목록에서 뺄까요?" 제안 영역. r.skip_suggestion 이 아니면 null.
+ * [삭제]는 확인 모달 후 삭제하고 onDone('deleted'), [그대로 두기]는 제안을 숨기고 onDone('dismissed') 를 호출한다.
+ */
+export function skipSuggestion(r, onDone) {
+  if (!r.skip_suggestion) return null;
+  const del = h('button', { type: 'button', class: 'btn btn-danger-ghost', 'aria-label': `${r.name} 삭제` }, '삭제');
+  const keep = h('button', { type: 'button', class: 'btn', 'aria-label': `${r.name} 그대로 두기` }, '그대로 두기');
+  const box = h('div', { class: 'suggest', role: 'group', 'aria-label': '목록 정리 제안' }, [
+    h('p', { class: 'suggest-title' }, '목록에서 뺄까요?'),
+    h('p', { class: 'muted small' }, `최근 ${r.consecutive_skips ?? 5}번 연속으로 넘겼어요.`),
+    h('div', { class: 'actions' }, [del, keep]),
+  ]);
+  del.addEventListener('click', async () => {
+    const ok = await confirmDialog({
+      title: '식당을 삭제할까요?',
+      message: `"${r.name}"과(와) 연결된 방문 기록도 함께 삭제돼요.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
+    del.disabled = true;
+    try {
+      await api.deleteRestaurant(r.id);
+      showToast('삭제했어요.', 'success');
+      onDone?.('deleted');
+    } catch (e) {
+      del.disabled = false;
+      showToast(e.message, 'error');
+    }
+  });
+  keep.addEventListener('click', async () => {
+    keep.disabled = true;
+    try {
+      await api.dismissSkipSuggestion(r.id);
+      r.skip_suggestion = false;
+      box.remove();
+      onDone?.('dismissed');
+    } catch (e) {
+      keep.disabled = false;
+      showToast(e.message, 'error');
+    }
+  });
+  return box;
 }
 
 export function favoriteButton(r, onChange) {

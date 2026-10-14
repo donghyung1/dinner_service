@@ -1,11 +1,13 @@
 import './styles/main.css';
 import { createRouter } from './router.js';
+import { DATA_SOURCE_NOTICE } from './constants.js';
 import { h } from './components/dom.js';
 import { recommendView } from './views/recommend.js';
 import { restaurantListView } from './views/restaurantList.js';
 import { restaurantDetailView } from './views/restaurantDetail.js';
 import { restaurantFormView } from './views/restaurantForm.js';
 import { visitsView } from './views/visits.js';
+import { statsView } from './views/stats.js';
 
 const routes = [
   { path: '/', name: 'recommend', view: recommendView },
@@ -14,6 +16,7 @@ const routes = [
   { path: '/restaurants/:id/edit', name: 'restaurants', view: restaurantFormView },
   { path: '/restaurants/:id', name: 'restaurants', view: restaurantDetailView },
   { path: '/visits', name: 'visits', view: visitsView },
+  { path: '/stats', name: 'stats', view: statsView },
 ];
 
 function notFound(outlet) {
@@ -24,6 +27,8 @@ function notFound(outlet) {
     ]),
   );
 }
+
+document.getElementById('main').after(h('footer', { class: 'site-footer' }, DATA_SOURCE_NOTICE));
 
 const outlet = document.getElementById('main');
 const router = createRouter({

@@ -20,6 +20,18 @@ sudo mariadb dinner_service < db/seed.sql       # 샘플 데이터 (테이블이
 echo "$PW"   # backend/.env 의 DB_PASSWORD 에 기입
 ```
 
+**기존 DB를 v0.5(M5)로 올리기** (추가형, 데이터 삭제 없음, 재실행 안전): `recommendation_skips` 테이블과 `restaurants.skip_dismissed_at` 컬럼을 추가한다.
+
+```bash
+sudo mariadb dinner_service < db/migrations/005_m5.sql   # 신규 설치는 schema.sql 에 이미 포함
+```
+
+**기존 DB를 v0.6(M6)으로 올리기** (추가형, 재실행 안전): `places` 테이블과 `restaurants.place_no` 컬럼/인덱스를 추가한다.
+
+```bash
+sudo mariadb dinner_service < db/migrations/006_places.sql   # 신규 설치는 schema.sql 에 이미 포함
+```
+
 `dinner_app` 은 `dinner_service.*` 에 대한 SELECT/INSERT/UPDATE/DELETE 권한만 가진다. 스키마 변경(DDL)은 root로 적용한다.
 
 ## 2. 애플리케이션 계층 (FastAPI, uv)
@@ -35,6 +47,23 @@ curl http://localhost:8000/api/v1/health                  # {"status":"ok","app"
 
 의존성은 `uv add <pkg>` 로만 관리한다 (pip, requirements.txt 사용 금지).
 API 문서: `http://localhost:8000/docs` (APP_ENV=dev 일 때).
+
+### 공공데이터 식당 카탈로그 임포트 (선택, M6)
+
+식당 추가 화면의 "공공데이터에서 찾기"는 공공데이터포털 「소상공인시장진흥공단_상가(상권)정보」 CSV를 `places` 테이블에 적재해 두어야 동작한다. 임포트하지 않아도 수동 입력은 정상 동작한다.
+
+1. [공공데이터포털](https://www.data.go.kr)에서 「소상공인시장진흥공단_상가(상권)정보」 파일 데이터(CSV, 시도별)를 내려받는다. 이용허락 조건(공공누리 유형)과 출처 문구는 데이터셋 페이지에서 확인하고, 필요하면 `frontend/src/constants.js` 의 `DATA_SOURCE_NOTICE` 를 고친다.
+2. `backend/data/` 에 둔다 (`.gitignore` 등록됨, 커밋 금지).
+3. 임포트. 시도 전체는 수십만 건이므로 생활권(시군구·행정동) 단위 필터를 권장한다.
+
+```bash
+cd backend
+uv run python -m app.scripts.import_places data/<파일>.csv --sido 서울특별시 --sigungu 강남구 [--dong 역삼1동] [--dry-run]
+```
+
+- 대분류 '음식'만 적재하고 술집·카페·제과류는 제외한다. UTF-8(BOM 포함)/CP949 자동 판별, 컬럼은 헤더 이름으로 찾는다(개편 전후 표기 허용). 상가업소번호 기준 upsert라 재실행해도 행이 늘지 않는다.
+- 먼저 `--dry-run` 으로 요약을 보고, 출력되는 "매핑되지 않아 ETC로 적재된 중분류명"으로 `backend/app/scripts/place_mapping.py` 를 보정한 뒤 재실행한다.
+- 검색 API: `GET /api/v1/places?q=역삼 김밥&category=SNACK&limit=20` (`q` 2자 이상, 공백 토큰 AND, `limit` 최대 50).
 
 ## 3. 프레젠테이션 계층 (Vanilla JS + Vite)
 

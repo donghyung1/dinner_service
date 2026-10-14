@@ -1,6 +1,8 @@
+from sqlalchemy import func
+
 from app.core.errors import NotFoundError
 from app.models import Restaurant
-from app.repositories.restaurant_repo import RestaurantRepository
+from app.repositories.restaurant_repo import RestaurantRepository, RestaurantRow
 from app.repositories.visit_repo import VisitRepository
 from app.schemas.restaurant import (
     RestaurantCreate,
@@ -10,11 +12,13 @@ from app.schemas.restaurant import (
     RestaurantUpdate,
 )
 from app.schemas.visit import VisitOut
+from app.services.restaurant_view import derived_fields, expiring_cutoff
 
 
-def _out(r: Restaurant, last) -> RestaurantOut:
-    o = RestaurantOut.model_validate(r)
-    o.last_visited_on = last
+def _out(row: RestaurantRow, cutoff) -> RestaurantOut:
+    o = RestaurantOut.model_validate(row.restaurant)
+    for k, v in derived_fields(row, cutoff).items():
+        setattr(o, k, v)
     return o
 
 
@@ -30,8 +34,7 @@ class RestaurantService:
         return r
 
     def _view(self, restaurant_id: int) -> RestaurantOut:
-        row = self.repo.get_with_last_visit(restaurant_id)
-        return _out(*row)
+        return _out(self.repo.get_row(restaurant_id), expiring_cutoff())
 
     def create(self, data: RestaurantCreate) -> RestaurantOut:
         r = self.repo.add(Restaurant(**data.model_dump()))
@@ -39,7 +42,8 @@ class RestaurantService:
 
     def list(self, *, sort, limit: int, offset: int, **filters) -> RestaurantList:
         rows, total = self.repo.list(sort=sort, limit=limit, offset=offset, **filters)
-        return RestaurantList(items=[_out(r, d) for r, d in rows], total=total, limit=limit, offset=offset)
+        cutoff = expiring_cutoff()
+        return RestaurantList(items=[_out(row, cutoff) for row in rows], total=total, limit=limit, offset=offset)
 
     def detail(self, restaurant_id: int) -> RestaurantDetail:
         self._get_or_404(restaurant_id)
@@ -49,7 +53,10 @@ class RestaurantService:
 
     def update(self, restaurant_id: int, data: RestaurantUpdate) -> RestaurantOut:
         r = self._get_or_404(restaurant_id)
-        for k, v in data.model_dump().items():
+        values = data.model_dump()
+        if "place_no" not in data.model_fields_set:
+            values.pop("place_no")  # 생략 시 기존 연결 유지
+        for k, v in values.items():
             setattr(r, k, v)
         self.repo.save(r)
         return self._view(restaurant_id)
@@ -62,3 +69,8 @@ class RestaurantService:
 
     def delete(self, restaurant_id: int) -> None:
         self.repo.delete(self._get_or_404(restaurant_id))
+
+    def dismiss_skip_suggestion(self, restaurant_id: int) -> None:
+        r = self._get_or_404(restaurant_id)
+        r.skip_dismissed_at = func.now()
+        self.repo.save(r)

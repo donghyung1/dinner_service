@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { confirmDialog, errorState, favoriteButton, field, restaurantBadges, spinner } from '../components/ui.js';
+import { confirmDialog, errorState, favoriteButton, field, restaurantBadges, skipSuggestion, spinner } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
 import { navigate } from '../router.js';
 import { todayISO } from '../constants.js';
@@ -89,6 +89,7 @@ export function restaurantDetailView(outlet, { id }, ctx) {
       h('article', { class: 'card detail' }, [
         h('div', { class: 'page-head' }, [h('h1', {}, r.name), favoriteButton(r)]),
         restaurantBadges(r),
+        skipSuggestion(r, (kind) => kind === 'deleted' && navigate('/restaurants')),
         h('dl', { class: 'facts' }, [
           h('dt', {}, '위치'), h('dd', {}, r.location || '-'),
           h('dt', {}, '메모'), h('dd', { class: 'pre' }, r.memo || '-'),

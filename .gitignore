@@ -18,3 +18,8 @@ dist/
 .idea/
 .vscode/
 *.sql.gz
+# public data (CSV 원본 등, PRD 9장)
+backend/data/
+
+# Windows 다운로드 메타데이터
+*:Zone.Identifier

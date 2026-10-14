@@ -67,3 +67,9 @@ def delete_restaurant(restaurant_id: int, svc: Svc):
 @router.patch("/{restaurant_id}/favorite", response_model=RestaurantOut)
 def set_favorite(restaurant_id: int, body: FavoriteUpdate, svc: Svc):
     return svc.set_favorite(restaurant_id, body.is_favorite)
+
+
+@router.post("/{restaurant_id}/skip-suggestion/dismiss", status_code=204)
+def dismiss_skip_suggestion(restaurant_id: int, svc: Svc):
+    svc.dismiss_skip_suggestion(restaurant_id)
+    return Response(status_code=204)
