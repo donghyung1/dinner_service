@@ -30,14 +30,16 @@ export const locationLabel = (loc) => (loc ? `${loc.sigungu}${loc.dong ? ` ${loc
 const fmt = (n) => n.toLocaleString('ko-KR');
 
 /**
- * 추천 조건 패널 안의 "위치" 표시/선택 영역. 위치는 localStorage 에만 저장한다.
- * 패널이 <form> 이므로 편집 영역은 중첩 form 없이 버튼 클릭으로 저장한다.
+ * 추천 조건 패널 안의 "위치" 선택 영역(시군구·동 select 가 항상 보인다).
+ * 고르는 즉시 localStorage 에 저장하고, 시군구가 빈 값이면 위치 해제로 본다.
  * onChange(loc) 는 저장 직후 호출된다(loc 은 null 일 수 있음).
  */
 export function locationField({ isCurrent, onChange }) {
   let loc = loadLocation();
-  const box = h('div', { class: 'location-field' });
-  const fs = h('fieldset', {}, [h('legend', {}, '위치'), box]);
+  const sigunguSel = selectEl([], '', { blank: '불러오는 중…' });
+  const dongSel = selectEl([], '', { blank: '시군구를 먼저 선택' });
+  dongSel.disabled = true;
+  let seq = 0;
 
   function fill(sel, list, blank, value) {
     sel.replaceChildren(
@@ -47,80 +49,43 @@ export function locationField({ isCurrent, onChange }) {
     sel.value = list.some((r) => r.name === value) ? value : '';
   }
 
-  function renderView() {
-    if (!loc) {
-      box.replaceChildren(
-        h('span', { class: 'muted' }, '위치를 정하면 근처 식당을 추천해요 '),
-        h('button', { type: 'button', class: 'btn btn-ghost', onClick: renderEdit }, '위치 정하기'),
-      );
-      return;
+  async function loadDongs(value) {
+    const my = ++seq;
+    dongSel.disabled = !sigunguSel.value;
+    if (!sigunguSel.value) return fill(dongSel, [], '시군구를 먼저 선택', '');
+    try {
+      const res = await api.placeRegions({ sigungu: sigunguSel.value, group: true });
+      if (my !== seq || !isCurrent()) return;
+      fill(dongSel, res.items, '동 전체', value);
+    } catch (e) {
+      showToast(e.message, 'error');
     }
-    box.replaceChildren(
-      h('span', { class: 'location-label' }, `📍 ${locationLabel(loc)}`),
-      h('button', { type: 'button', class: 'btn btn-ghost', onClick: renderEdit }, '변경'),
-    );
   }
 
-  function renderEdit() {
-    const sigunguSel = selectEl([], '', { blank: '불러오는 중…' });
-    const dongSel = selectEl([], '', { blank: '시군구를 먼저 선택' });
-    dongSel.disabled = true;
-    let seq = 0;
-
-    async function loadDongs(value) {
-      const my = ++seq;
-      dongSel.disabled = !sigunguSel.value;
-      if (!sigunguSel.value) return fill(dongSel, [], '시군구를 먼저 선택', '');
-      try {
-        const res = await api.placeRegions({ sigungu: sigunguSel.value, group: true });
-        if (my !== seq || !isCurrent()) return;
-        fill(dongSel, res.items, '동 전체', value);
-      } catch (e) {
-        showToast(e.message, 'error');
-      }
-    }
-
-    sigunguSel.addEventListener('change', () => loadDongs(''));
-
-    const save = h('button', {
-      type: 'button',
-      class: 'btn btn-primary',
-      onClick: () => {
-        if (!sigunguSel.value) { sigunguSel.focus(); return; }
-        loc = { sigungu: sigunguSel.value, dong: dongSel.value };
-        saveLocation(loc);
-        renderView();
-        onChange(loc);
-      },
-    }, '저장');
-    const cancel = h('button', { type: 'button', class: 'btn', onClick: renderView }, '취소');
-    const clear = h('button', {
-      type: 'button',
-      class: 'btn btn-danger-ghost',
-      hidden: !loc,
-      onClick: () => { loc = null; saveLocation(null); renderView(); onChange(null); },
-    }, '위치 해제');
-
-    box.replaceChildren(
-      h('div', { class: 'location-edit' }, [
-        h('div', { class: 'row-fields' }, [
-          field({ label: '시군구', control: sigunguSel }),
-          field({ label: '동', control: dongSel }),
-        ]),
-        h('div', { class: 'actions' }, [save, cancel, clear]),
-      ]),
-    );
-
-    api.placeRegions({}).then(async (res) => {
-      if (!isCurrent()) return;
-      fill(sigunguSel, res.items, '시군구 선택', loc?.sigungu ?? '');
-      await loadDongs(loc?.dong ?? '');
-    }).catch((e) => showToast(e.message, 'error'));
+  function commit() {
+    loc = sigunguSel.value ? { sigungu: sigunguSel.value, dong: dongSel.value } : null;
+    saveLocation(loc);
+    onChange(loc);
   }
 
-  renderView();
+  sigunguSel.addEventListener('change', () => { loadDongs(''); commit(); });
+  dongSel.addEventListener('change', commit);
+
+  api.placeRegions({}).then(async (res) => {
+    if (!isCurrent()) return;
+    fill(sigunguSel, res.items, '전체 지역', loc?.sigungu ?? '');
+    await loadDongs(loc?.dong ?? '');
+  }).catch((e) => showToast(e.message, 'error'));
+
+  const el = h('fieldset', {}, [
+    h('legend', {}, '위치'),
+    h('div', { class: 'row-fields' }, [
+      field({ label: '시군구', control: sigunguSel }),
+      field({ label: '동', control: dongSel }),
+    ]),
+  ]);
   return {
-    el: fs,
+    el,
     get: () => loc,
   };
 }
