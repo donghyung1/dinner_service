@@ -166,7 +166,7 @@ export function restaurantFormView(outlet, params, ctx) {
       }
     });
 
-    root.replaceChildren(h('h1', {}, editId ? '식당 수정' : '식당 추가'), finder, form);
+    root.replaceChildren(...[h('h1', {}, editId ? '식당 수정' : '식당 추가'), finder, form].filter(Boolean));
     (finder?.querySelector('input') ?? name).focus();
   }
 
