@@ -14,12 +14,19 @@ const routes = [
   { path: '/', name: 'recommend', view: recommendView },
   { path: '/restaurants', name: 'restaurants', view: restaurantListView },
   { path: '/restaurants/new', name: 'restaurants', view: restaurantFormView },
+  { path: '/restaurants/explore', name: 'restaurants', view: exploreView },
   { path: '/restaurants/:id/edit', name: 'restaurants', view: restaurantFormView },
   { path: '/restaurants/:id', name: 'restaurants', view: restaurantDetailView },
   { path: '/visits', name: 'visits', view: visitsView },
   { path: '/stats', name: 'stats', view: statsView },
-  { path: '/explore', name: 'explore', view: exploreView },
+  { path: '/explore', name: 'restaurants', view: legacyExploreRedirect },
 ];
+
+// 예전 '#/explore' 링크 호환: 쿼리를 보존한 채 새 경로로 교체한다.
+function legacyExploreRedirect() {
+  const q = window.location.hash.split('?')[1];
+  window.location.replace(`#/restaurants/explore${q ? `?${q}` : ''}`);
+}
 
 function notFound(outlet) {
   outlet.append(

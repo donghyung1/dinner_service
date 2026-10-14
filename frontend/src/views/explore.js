@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { badge, chipGroup, emptyState, errorState, field, spinner } from '../components/ui.js';
+import { badge, chipGroup, emptyState, errorState, field, restaurantTabs, spinner } from '../components/ui.js';
 import { showToast } from '../components/toast.js';
 import { CATEGORIES, DATA_SOURCE_NOTICE, categoryLabel, placeToFormValues } from '../constants.js';
 
@@ -26,7 +26,7 @@ function writeFilters(f) {
   f.categories.forEach((c) => qs.append('category', c));
   if (f.q) qs.set('q', f.q);
   const s = qs.toString();
-  history.replaceState(null, '', `#/explore${s ? `?${s}` : ''}`);
+  history.replaceState(null, '', `#/restaurants/explore${s ? `?${s}` : ''}`);
 }
 
 const placeTitle = (p) => (p.branch_name ? `${p.name} ${p.branch_name}` : p.name);
@@ -235,7 +235,8 @@ export function exploreView(outlet, _params, ctx) {
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
-      h('div', { class: 'page-head' }, h('h1', {}, '동네 식당 둘러보기')),
+      h('div', { class: 'page-head' }, h('h1', {}, '식당')),
+      restaurantTabs('explore'),
       h('form', {
         class: 'panel', role: 'search',
         onSubmit: (e) => { e.preventDefault(); filters.q = qInput.value.trim(); refilter(); },

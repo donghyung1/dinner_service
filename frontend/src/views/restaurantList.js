@@ -1,6 +1,6 @@
 import { api } from '../api/client.js';
 import { h } from '../components/dom.js';
-import { chipGroup, emptyState, errorState, favoriteButton, field, pager, restaurantBadges, selectEl, skipSuggestion, spinner } from '../components/ui.js';
+import { chipGroup, emptyState, errorState, favoriteButton, field, pager, restaurantBadges, restaurantTabs, selectEl, skipSuggestion, spinner } from '../components/ui.js';
 import { CATEGORIES, PRICES, SORTS, STATUSES } from '../constants.js';
 
 const LIMIT = 20;
@@ -47,7 +47,12 @@ export function restaurantListView(outlet, _params, ctx) {
         emptyState(
           filtered ? '조건에 맞는 식당이 없어요' : '아직 등록한 식당이 없어요',
           filtered ? '검색어나 필터를 바꿔 보세요.' : '가고 싶은 식당을 먼저 추가해 보세요.',
-          h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '+ 식당 추가'),
+          filtered
+            ? null
+            : h('div', { class: 'actions' }, [
+                h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '+ 식당 추가'),
+                h('a', { class: 'btn', href: '#/restaurants/explore' }, '동네에서 찾기'),
+              ]),
         ),
       );
       return;
@@ -88,6 +93,7 @@ export function restaurantListView(outlet, _params, ctx) {
         h('h1', {}, '식당'),
         h('a', { class: 'btn btn-primary', href: '#/restaurants/new' }, '+ 식당 추가'),
       ]),
+      restaurantTabs('mine'),
       h('form', { class: 'panel', role: 'search', onSubmit: (e) => { e.preventDefault(); state.q = qInput.value; refilter(); } }, [
         h('div', { class: 'search-row' }, [
           h('label', { for: 'q', class: 'sr-only' }, '검색어'),

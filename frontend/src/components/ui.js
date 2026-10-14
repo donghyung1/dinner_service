@@ -26,6 +26,16 @@ export function errorState(err, onRetry) {
   ]);
 }
 
+/** 식당 화면 상단 탭(내 식당 / 동네에서 찾기). 이동은 링크, 현재 탭은 aria-current 로 표시한다. */
+export function restaurantTabs(active) {
+  const tab = (key, href, text) =>
+    h('a', { class: 'tab', href, ...(active === key ? { 'aria-current': 'page' } : {}) }, text);
+  return h('nav', { class: 'tabs', 'aria-label': '식당 보기' }, [
+    tab('mine', '#/restaurants', '내 식당'),
+    tab('explore', '#/restaurants/explore', '동네에서 찾기'),
+  ]);
+}
+
 export function badge(text, kind = '') {
   return h('span', { class: `badge ${kind}`.trim() }, text);
 }

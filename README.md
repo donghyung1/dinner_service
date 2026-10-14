@@ -75,7 +75,7 @@ uv run python -m app.scripts.import_places data/<파일>.csv --sido 서울특별
 
 ### 동네 식당 둘러보기 (M7)
 
-`#/explore` 화면에서 임포트한 `places`를 시군구/동/카테고리/키워드로 둘러보고, 조건 내 무작위 추천을 받고, 바로 "가보고 싶음"으로 등록한다. 추가 마이그레이션은 없다.
+`#/restaurants/explore`(식당 > 동네에서 찾기) 화면에서 임포트한 `places`를 시군구/동/카테고리/키워드로 둘러보고, 조건 내 무작위 추천을 받고, 바로 "가보고 싶음"으로 등록한다. 추가 마이그레이션은 없다.
 
 - `GET /api/v1/places/regions?sigungu=` : 시군구(없으면)·동 목록과 건수
 - `GET /api/v1/places/browse?sigungu&dong&category&q&offset&limit` : `items` + `total` (이름순, `limit` 최대 50)
@@ -93,7 +93,7 @@ npm run dev                 # 개발 서버 :5173 (/api 는 백엔드로 프록�
 npm run build && npm run preview   # dist/ 빌드 후 :4173 에서 서빙 (CORS 에 해당 Origin 추가 필요)
 ```
 
-해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` `#/stats` `#/explore`(필터는 `?sigungu=&dong=&category=&q=`).
+해시 라우팅: `#/`(추천) `#/restaurants` `#/restaurants/new` `#/restaurants/:id` `#/restaurants/:id/edit` `#/visits` `#/stats` (식당 > 동네에서 찾기는 `#/restaurants/explore`, 필터는 `?sigungu=&dong=&category=&q=`; 예전 `#/explore`는 여기로 리다이렉트).
 구조: `src/{main.js, router.js, api/client.js, views/, components/, styles/}`.
 
 ## 환경변수
