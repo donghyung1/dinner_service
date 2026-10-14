@@ -77,6 +77,7 @@ export function restaurantListView(outlet, _params, ctx) {
 
   const listBox = h('div', { class: 'list-box', 'aria-live': 'polite' });
   const pickBox = h('div', { class: 'list-pick' });
+  const totalEl = h('p', { class: 'list-total', role: 'status' });
 
   // --- 필터 컨트롤 ---
   const sigunguSel = h('select');
@@ -192,6 +193,7 @@ export function restaurantListView(outlet, _params, ctx) {
 
   function renderList() {
     if (total === 0 && items.length === 0) {
+      totalEl.replaceChildren();
       const filtered = hasPlaceCondition() || hasDetail();
       listBox.replaceChildren(
         emptyState(
@@ -202,7 +204,8 @@ export function restaurantListView(outlet, _params, ctx) {
       );
       return;
     }
-    const nodes = [h('p', { class: 'list-total', role: 'status' }, summary())];
+    totalEl.replaceChildren(...summary().filter(Boolean));
+    const nodes = [];
     if (!hasPlaceCondition() && !hasDetail()) {
       nodes.push(h('p', { class: 'muted small list-hint' }, '지역이나 카테고리를 고르면 동네 식당도 함께 보여요.'));
     }
@@ -305,16 +308,15 @@ export function restaurantListView(outlet, _params, ctx) {
   pickBtn.addEventListener('click', doPick);
 
   const detail = h('details', { class: 'filter-detail' }, [
-    h('summary', {}, [icon('sliders'), '상세 필터 (상태·가격대·즐겨찾기·정렬)']),
+    h('summary', {}, [icon('sliders'), '상세 필터 (상태·가격대·정렬)']),
     chipGroup({ legend: '가격대', name: 'lprice', options: PRICES, selected: filters.prices, onChange: (v) => { filters.prices = v; refilter(); } }),
     h('div', { class: 'row-fields' }, [
       field({ label: '상태', control: statusSel, icon: 'bookmark' }),
       field({ label: '정렬', control: sortSel, icon: 'list' }),
-      h('div', { class: 'check' }, [favInput, h('label', { for: 'fav' }, [icon('star'), '즐겨찾기만'])]),
     ]),
-    h('p', { class: 'hint' }, '상태·가격대·즐겨찾기를 고르면 내 식당만 보여요.'),
+    h('p', { class: 'hint' }, '상태·가격대를 고르면 내 식당만 보여요.'),
   ]);
-  if (hasDetail() || filters.sort !== DEFAULT_SORT) detail.open = true;
+  if (filters.status || filters.prices.length || filters.sort !== DEFAULT_SORT) detail.open = true;
 
   outlet.replaceChildren(
     h('section', { class: 'page' }, [
@@ -338,6 +340,10 @@ export function restaurantListView(outlet, _params, ctx) {
         pickBtn,
       ]),
       pickBox,
+      h('div', { class: 'list-head' }, [
+        totalEl,
+        h('div', { class: 'check', title: '즐겨찾기만 보면 내 식당만 보여요' }, [favInput, h('label', { for: 'fav' }, [icon('star'), '즐겨찾기만'])]),
+      ]),
       listBox,
     ]),
   );

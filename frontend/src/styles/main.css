@@ -285,7 +285,8 @@ textarea { resize: vertical; }
 .tab[aria-current="page"] { border-bottom-color: var(--ink); color: var(--ink); }
 
 /* 식당 목록 */
-.list-total { margin: 0 0 .4rem; font-weight: 700; display: flex; gap: 1rem; align-items: center; font-variant-numeric: tabular-nums; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin: 0 0 .4rem; }
+.list-total { margin: 0; font-weight: 700; display: flex; gap: 1rem; align-items: center; font-variant-numeric: tabular-nums; }
 .total-part { display: inline-flex; align-items: center; gap: .35rem; }
 .list-hint { margin: 0 0 .6rem; }
 .list-place { align-items: flex-start; }
