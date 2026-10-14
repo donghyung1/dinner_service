@@ -15,8 +15,9 @@ EXCLUDE_KEYWORDS = (
     "커피", "카페", "음료", "비알코올", "제과", "제빵", "케익", "케이크",
     "아이스크림", "빙수", "디저트", "베이커리", "도넛", "주스", "차류", "찻집", "다방",
 )
-# "바"는 부분 일치하면 오탐이 많아 분류명 전체가 일치할 때만 제외한다.
-EXCLUDE_EXACT = ("바", "bar")
+# 부분 일치하면 오탐이 많은 분류명은 전체가 일치할 때만 제외한다.
+# 구내식당: 일반인이 이용할 수 없음 / 떡/한과: "떡"은 떡볶이 등과 겹친다.
+EXCLUDE_EXACT = ("바", "bar", "구내식당", "떡/한과")
 
 # (키워드, 카테고리) - 위에서부터 먼저 맞는 규칙이 이긴다.
 CATEGORY_RULES: tuple[tuple[str, Category], ...] = (
@@ -33,8 +34,9 @@ CATEGORY_RULES: tuple[tuple[str, Category], ...] = (
     ("오리", Category.KOREAN),
     ("치킨", Category.KOREAN),
     ("패스트푸드", Category.WESTERN),
-    ("햄버거", Category.WESTERN),
+    ("버거", Category.WESTERN),
     ("피자", Category.WESTERN),
+    ("샌드위치", Category.WESTERN),  # 토스트/샌드위치/샐러드
 )
 DEFAULT_CATEGORY = Category.ETC
 
