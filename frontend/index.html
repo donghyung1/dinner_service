@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#d9622b" />
+    <title>오늘 뭐 먹지?</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문 바로가기</a>
+    <header class="topbar">
+      <a class="brand" href="#/">🍚 오늘 뭐 먹지?</a>
+      <nav id="nav" aria-label="주 메뉴">
+        <a href="#/" data-nav="recommend">추천</a>
+        <a href="#/restaurants" data-nav="restaurants">식당</a>
+        <a href="#/visits" data-nav="visits">기록</a>
+      </nav>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
