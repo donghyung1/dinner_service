@@ -6,7 +6,7 @@ import { showToast } from '../components/toast.js';
 const LIMIT = 20;
 const state = { from: '', to: '', offset: 0 };
 
-export function visitsView(outlet, _params, ctx = { isCurrent: () => true }) {
+export function visitsView(outlet, _params, ctx) {
   const box = h('div', { class: 'list-box', 'aria-live': 'polite' });
   let seq = 0;
 

@@ -10,13 +10,13 @@ export class ApiError extends Error {
   }
 }
 
-export function getBaseUrl() {
+function getBaseUrl() {
   const base = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
   return base.replace(/\/+$/, '');
 }
 
 /** 배열은 반복 키로, null/undefined/빈 문자열은 생략한다. */
-export function buildQuery(params = {}) {
+function buildQuery(params = {}) {
   const sp = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === '') continue;
@@ -27,7 +27,7 @@ export function buildQuery(params = {}) {
   return s ? `?${s}` : '';
 }
 
-export async function request(method, path, { query, body, signal } = {}) {
+async function request(method, path, { query, body, signal } = {}) {
   const url = `${getBaseUrl()}${path}${buildQuery(query)}`;
   const init = { method, headers: { Accept: 'application/json' }, signal };
   if (body !== undefined) {

@@ -33,21 +33,3 @@ CREATE TABLE IF NOT EXISTS visits (
   KEY idx_visits_restaurant_date (restaurant_id, visited_on DESC),
   KEY idx_visits_date (visited_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ---------------------------------------------------------------
--- 선택(P2): 태그. MVP에서는 사용하지 않으며 PRD 6.3에 따라 DDL만 미리 둔다.
--- ---------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS tags (
-  id   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  name VARCHAR(30) NOT NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_tags_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS restaurant_tags (
-  restaurant_id BIGINT UNSIGNED NOT NULL,
-  tag_id        BIGINT UNSIGNED NOT NULL,
-  PRIMARY KEY (restaurant_id, tag_id),
-  CONSTRAINT fk_rt_restaurant FOREIGN KEY (restaurant_id) REFERENCES restaurants (id) ON DELETE CASCADE,
-  CONSTRAINT fk_rt_tag FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

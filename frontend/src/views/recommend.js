@@ -8,9 +8,9 @@ const STORAGE_KEY = 'dinner.recommend.filters';
 const DEFAULTS = { categories: [], prices: [], status: '', days: 7, favoriteOnly: false };
 const SLOT_FACES = ['🍜', '🍣', '🍕', '🍚', '🥟', '🍔', '🥘', '🍛', '🥗', '🍢'];
 
-export function loadFilters(storage = window.localStorage) {
+function loadFilters() {
   try {
-    const raw = JSON.parse(storage.getItem(STORAGE_KEY) || 'null');
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
     const days = Number.isInteger(raw.days) && raw.days >= 0 && raw.days <= 90 ? raw.days : DEFAULTS.days;
     return {
@@ -25,15 +25,15 @@ export function loadFilters(storage = window.localStorage) {
   }
 }
 
-function saveFilters(f, storage = window.localStorage) {
+function saveFilters(f) {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(f));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(f));
   } catch {
     /* 저장 불가 환경은 무시 */
   }
 }
 
-export function toQuery(f, excludeId) {
+function toQuery(f, excludeId) {
   return {
     category: f.categories,
     price_level: f.prices,
@@ -48,7 +48,7 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const canAnimate = () => typeof window.matchMedia === 'function' && !prefersReducedMotion();
 
-export function recommendView(outlet, _params, ctx = { isCurrent: () => true }) {
+export function recommendView(outlet, _params, ctx) {
   const filters = loadFilters();
   let current = null; // 현재 추천 결과
   let busy = false;

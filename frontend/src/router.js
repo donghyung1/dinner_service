@@ -1,6 +1,6 @@
 // 해시 기반 라우터. 경로 패턴의 ":name" 은 params 로 전달된다.
 
-export function compile(pattern) {
+function compile(pattern) {
   const keys = [];
   const re = pattern
     .split('/')
@@ -15,7 +15,7 @@ export function compile(pattern) {
   return { re: new RegExp(`^${re}$`), keys };
 }
 
-export function currentPath(hash = window.location.hash) {
+function currentPath(hash = window.location.hash) {
   let p = hash.replace(/^#/, '');
   p = p.split('?')[0];
   if (!p.startsWith('/')) p = `/${p}`;
@@ -24,7 +24,7 @@ export function currentPath(hash = window.location.hash) {
 }
 
 /** routes: [{ path, name, view }]. 먼저 선언된 항목이 우선한다. */
-export function matchRoute(routes, path) {
+function matchRoute(routes, path) {
   for (const route of routes) {
     const { re, keys } = compile(route.path);
     const m = re.exec(path);
@@ -63,11 +63,6 @@ export function createRouter({ routes, outlet, notFound, onChange }) {
       window.addEventListener('hashchange', render);
       return render();
     },
-    stop() {
-      window.removeEventListener('hashchange', render);
-      if (typeof cleanup === 'function') cleanup();
-    },
-    render,
   };
 }
 

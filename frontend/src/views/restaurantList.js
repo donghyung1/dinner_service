@@ -7,7 +7,7 @@ const LIMIT = 20;
 // 상세 화면에서 돌아와도 검색 조건이 유지되도록 모듈 범위에 보관한다.
 const state = { q: '', categories: [], prices: [], status: '', fav: false, sort: 'created_desc', offset: 0 };
 
-export function restaurantListView(outlet, _params, ctx = { isCurrent: () => true }) {
+export function restaurantListView(outlet, _params, ctx) {
   const listBox = h('div', { class: 'list-box', 'aria-live': 'polite' });
   let seq = 0;
 

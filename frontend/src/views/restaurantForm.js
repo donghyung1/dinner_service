@@ -19,7 +19,7 @@ export function validate(v) {
   return e;
 }
 
-export function restaurantFormView(outlet, params, ctx = { isCurrent: () => true }) {
+export function restaurantFormView(outlet, params, ctx) {
   const editId = params.id;
   const root = h('section', { class: 'page' });
   outlet.replaceChildren(root);

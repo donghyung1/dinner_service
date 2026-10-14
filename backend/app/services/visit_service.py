@@ -8,17 +8,16 @@ from app.schemas.visit import VisitCreate, VisitList, VisitOut
 
 
 class VisitService:
-    def __init__(self, visits: VisitRepository, restaurants: RestaurantRepository, today_fn=date.today):
+    def __init__(self, visits: VisitRepository, restaurants: RestaurantRepository):
         self.visits = visits
         self.restaurants = restaurants
-        self.today_fn = today_fn
 
     def create(self, data: VisitCreate) -> VisitOut:
         if self.restaurants.get(data.restaurant_id) is None:
             raise NotFoundError("식당을 찾을 수 없습니다.")
         v = Visit(
             restaurant_id=data.restaurant_id,
-            visited_on=data.visited_on or self.today_fn(),
+            visited_on=data.visited_on or date.today(),
             source=data.source,
             note=data.note,
         )

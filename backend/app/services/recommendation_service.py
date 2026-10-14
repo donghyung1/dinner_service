@@ -6,20 +6,17 @@ from app.repositories.restaurant_repo import RestaurantRepository
 from app.schemas.restaurant import RecommendationOut, RecommendedRestaurant
 
 
-def pick_random(candidates: list, exclude_id: int | None, rng: random.Random | None = None):
+def pick_random(candidates: list, exclude_id: int | None):
     """후보에서 균등 확률로 1건 선택. 후보가 2개 이상일 때만 exclude_id를 제외한다."""
-    rng = rng or random
     pool = candidates
     if exclude_id is not None and len(candidates) > 1:
         pool = [c for c in candidates if c[0].id != exclude_id] or candidates
-    return rng.choice(pool), len(pool)
+    return random.choice(pool), len(pool)
 
 
 class RecommendationService:
-    def __init__(self, repo: RestaurantRepository, rng: random.Random | None = None, today_fn=date.today):
+    def __init__(self, repo: RestaurantRepository):
         self.repo = repo
-        self.rng = rng or random.Random()
-        self.today_fn = today_fn
 
     def random(
         self,
@@ -32,7 +29,7 @@ class RecommendationService:
         exclude_id: int | None = None,
     ) -> RecommendationOut:
         candidates = self.repo.candidates(
-            today=self.today_fn(),
+            today=date.today(),
             exclude_recent_days=exclude_recent_days,
             categories=categories,
             price_levels=price_levels,
@@ -43,7 +40,7 @@ class RecommendationService:
             raise NoCandidatesError(
                 "조건에 맞는 식당이 없습니다. 카테고리·가격대 조건이나 최근 방문 제외 기간을 완화해 보세요."
             )
-        (r, last), count = pick_random(candidates, exclude_id, self.rng)
+        (r, last), count = pick_random(candidates, exclude_id)
         data = RecommendedRestaurant(
             id=r.id,
             name=r.name,

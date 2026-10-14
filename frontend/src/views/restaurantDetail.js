@@ -7,7 +7,7 @@ import { todayISO } from '../constants.js';
 
 const SOURCE = { RECOMMENDATION: '추천', MANUAL: '직접 기록' };
 
-export function restaurantDetailView(outlet, { id }, ctx = { isCurrent: () => true }) {
+export function restaurantDetailView(outlet, { id }, ctx) {
   const root = h('section', { class: 'page' });
   outlet.replaceChildren(root);
 
