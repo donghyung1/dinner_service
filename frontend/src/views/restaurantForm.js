@@ -46,7 +46,8 @@ export function restaurantFormView(outlet, params, ctx) {
     const location = h('input', { type: 'text', value: r?.location ?? '', maxlength: 300 });
     const memo = h('textarea', { rows: 4, maxlength: 1100 });
     memo.value = r?.memo ?? '';
-    const fav = h('input', { type: 'checkbox', id: 'is-fav', checked: r?.is_favorite });
+    // 즐겨찾기는 추가 화면에서만 고른다. 수정 화면에서는 기존 값을 그대로 보낸다.
+    const fav = editId ? null : h('input', { type: 'checkbox', id: 'is-fav' });
 
     const F = {
       name: field({ label: '이름', control: name, required: true, icon: 'utensils' }),
@@ -109,7 +110,7 @@ export function restaurantFormView(outlet, params, ctx) {
     const form = h('form', { class: 'panel', novalidate: true }, [
       placeBar,
       F.name, F.category, F.status, F.price_level, F.location, F.memo,
-      h('div', { class: 'check' }, [fav, h('label', { for: 'is-fav' }, [icon('star'), '즐겨찾기'])]),
+      fav && h('div', { class: 'check' }, [fav, h('label', { for: 'is-fav' }, [icon('star'), '즐겨찾기'])]),
       formErr,
       h('div', { class: 'actions' }, [
         submit,
@@ -140,7 +141,7 @@ export function restaurantFormView(outlet, params, ctx) {
         price_level: values.price_level === '' ? null : Number(values.price_level),
         location: values.location.trim() || null,
         memo: values.memo.trim() || null,
-        is_favorite: fav.checked,
+        is_favorite: fav ? fav.checked : Boolean(r?.is_favorite),
       };
       if (!editId) body.place_no = placeNo; // 수정(PUT)에서는 생략해 기존 연결을 유지한다
       submit.disabled = true;
