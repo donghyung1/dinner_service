@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   };
   return {
     server: { port: 5173, host: true, proxy },
-    // 외부 공개(Cloudflare Quick Tunnel)는 빌드 결과물을 preview 로 띄워 연결한다.
-    preview: { port: 4173, host: true, proxy, allowedHosts: ['.trycloudflare.com'] },
+    // 외부 공개(Cloudflare Quick Tunnel, ngrok)는 빌드 결과물을 preview 로 띄워 연결한다.
+    preview: { port: 4173, host: true, proxy, allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok-free.dev'] },
   };
 });
