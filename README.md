@@ -11,7 +11,8 @@ frontend/  Vanilla JS + Vite (Vite)   backend/  FastAPI (uv)   db/  스키마·�
 최초 설정(아래 1~3절의 `.env`, `uv sync`, `npm install`)을 마친 뒤에는 한 줄로 백엔드와 프론트엔드를 함께 띄운다.
 
 ```bash
-./dev.sh        # 백엔드 :8000 + 프론트엔드 :5173 → http://localhost:5173, Ctrl+C 로 둘 다 종료
+./dev.sh          # 백엔드 :8000 + 프론트엔드 :5173 → http://localhost:5173, Ctrl+C 로 둘 다 종료
+./dev.sh --ngrok  # 백엔드 :8000(쿠키 Secure) + 프론트 빌드·preview :4173 + ngrok, 공개 주소 출력
 ```
 
 ## 1. 데이터 계층 (MariaDB 10.6+)
