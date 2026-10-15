@@ -11,8 +11,14 @@ import { restaurantDetailView } from './views/restaurantDetail.js';
 import { restaurantFormView } from './views/restaurantForm.js';
 import { visitsView } from './views/visits.js';
 import { statsView } from './views/stats.js';
+import { loginView } from './views/login.js';
+import { signupView } from './views/signup.js';
+import { setUnauthorizedHandler } from './api/client.js';
+import { getUser, goToLogin, loadSession, rememberReturn } from './auth.js';
 
 const routes = [
+  { path: '/login', name: 'login', view: loginView },
+  { path: '/signup', name: 'login', view: signupView },
   { path: '/', name: 'recommend', view: recommendView },
   { path: '/restaurants', name: 'restaurants', view: restaurantListView },
   { path: '/restaurants/new', name: 'restaurants', view: restaurantFormView },
@@ -50,11 +56,26 @@ function notFound(outlet) {
 document.getElementById('main').after(h('footer', { class: 'site-footer' }, DATA_SOURCE_NOTICE));
 
 const outlet = document.getElementById('main');
+// 세션이 없거나 만료되어 어떤 API 든 401 을 받으면 로그인 화면으로 보낸다(로그인 후 원래 화면으로 복귀).
+setUnauthorizedHandler(goToLogin);
+
 const router = createRouter({
   routes,
   outlet,
   notFound,
+  // 로그인하지 않았으면 모든 화면을 로그인으로, 로그인한 상태에서 #/login 은 홈으로 보낸다.
+  guard(path) {
+    if (!getUser()) {
+      if (path !== '/login' && path !== '/signup') {
+        rememberReturn();
+        return '/login';
+      }
+      return null;
+    }
+    return path === '/login' || path === '/signup' ? '/' : null;
+  },
   onChange(route) {
+    document.body.classList.toggle('is-login', route?.name === 'login');
     document.querySelectorAll('#nav a').forEach((a) => {
       const on = route && a.dataset.nav === route.name;
       if (on) a.setAttribute('aria-current', 'page');
@@ -63,4 +84,5 @@ const router = createRouter({
     window.scrollTo?.(0, 0);
   },
 });
+await loadSession(); // 쿠키가 유효한지 /auth/me 로 확인한 뒤 첫 화면을 그린다
 router.start();

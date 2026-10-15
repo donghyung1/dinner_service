@@ -10,6 +10,12 @@ export class ApiError extends Error {
   }
 }
 
+// 인증이 필요한 요청이 401 을 받으면(세션 만료 등) 로그인 화면으로 보내는 핸들러. main.js 가 등록한다.
+let unauthorizedHandler = null;
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn;
+}
+
 function getBaseUrl() {
   const base = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
   return base.replace(/\/+$/, '');
@@ -27,9 +33,10 @@ function buildQuery(params = {}) {
   return s ? `?${s}` : '';
 }
 
-async function request(method, path, { query, body, signal } = {}) {
+async function request(method, path, { query, body, signal, auth = true } = {}) {
   const url = `${getBaseUrl()}${path}${buildQuery(query)}`;
-  const init = { method, headers: { Accept: 'application/json' }, signal };
+  // 세션 쿠키(HttpOnly)는 같은 origin 요청에 브라우저가 알아서 실어 보낸다.
+  const init = { method, headers: { Accept: 'application/json' }, signal, credentials: 'same-origin' };
   if (body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
@@ -48,6 +55,7 @@ async function request(method, path, { query, body, signal } = {}) {
   } catch {
     data = null;
   }
+  if (res.status === 401 && auth) unauthorizedHandler?.();
   if (!res.ok) {
     const err = data?.error;
     throw new ApiError(
@@ -61,6 +69,10 @@ async function request(method, path, { query, body, signal } = {}) {
 }
 
 export const api = {
+  login: (username, password) => request('POST', '/auth/login', { body: { username, password }, auth: false }),
+  signup: (username, password) => request('POST', '/auth/signup', { body: { username, password }, auth: false }),
+  logout: () => request('POST', '/auth/logout', { auth: false }),
+  me: () => request('GET', '/auth/me', { auth: false }),
   listRestaurants: (query) => request('GET', '/restaurants', { query }),
   searchRestaurants: (query) => request('GET', '/restaurants/search', { query }),
   randomRestaurant: (query) => request('GET', '/restaurants/search/random', { query }),

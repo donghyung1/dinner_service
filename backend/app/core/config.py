@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     CORS_ALLOW_ORIGINS: str = "http://localhost:5173"
     APP_ENV: str = "dev"
     APP_PORT: int = 8000
+    SESSION_COOKIE_SECURE: bool = False  # ngrok 등 https 로 공개할 때 true
+    SESSION_TTL_DAYS: int = 14
+    ALLOW_SIGNUP: bool = True  # false 면 POST /auth/signup 이 403 (계정은 CLI로만 생성)
 
     @property
     def cors_origins(self) -> list[str]:

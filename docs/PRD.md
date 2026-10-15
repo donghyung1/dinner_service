@@ -6,9 +6,9 @@
 |------|------|
 | 제품명 | 오늘 뭐 먹지? |
 | 한 줄 소개 | 자주 가는 식당과 가보고 싶은 식당을 저장해 두고, 고민될 때 조건에 맞는 식당을 무작위로 추천받는 웹앱 |
-| 문서 버전 | v0.9 |
+| 문서 버전 | v1.0 |
 | 작성일 | 2026-10-14 |
-| 상태 | 초안 (v0.2: 배포 방식 직접 실행, Python 패키지 관리 uv 확정 / v0.3: 프론트엔드 React → Vanilla JS + Vite, 단일 사용자·내부망 확정 / v0.4: 단위 테스트 제외 / v0.5: 가중치 추천, 넘긴 기록, 가보고 싶음 유통기한, 운명·토너먼트 모드, 카테고리 공백 알림, 월간 회고 추가 / v0.6: 공공데이터 상가정보 CSV 임포트와 식당 추가 화면 검색 추가 / v0.7: 동네 식당 둘러보기 추가 / v0.8: 내 식당과 동네 식당을 한 목록으로 통합 / v0.9: 내 위치 기반 추천) |
+| 상태 | 초안 (v0.2: 배포 방식 직접 실행, Python 패키지 관리 uv 확정 / v0.3: 프론트엔드 React → Vanilla JS + Vite, 단일 사용자·내부망 확정 / v0.4: 단위 테스트 제외 / v0.5: 가중치 추천, 넘긴 기록, 가보고 싶음 유통기한, 운명·토너먼트 모드, 카테고리 공백 알림, 월간 회고 추가 / v0.6: 공공데이터 상가정보 CSV 임포트와 식당 추가 화면 검색 추가 / v0.7: 동네 식당 둘러보기 추가 / v0.8: 내 식당과 동네 식당을 한 목록으로 통합 / v0.9: 내 위치 기반 추천 / v1.0: 로그인·회원가입) |
 | 기술 스택 | Vanilla JS + Vite (프레젠테이션, UI 프레임워크 미사용) / FastAPI (애플리케이션) / MariaDB (데이터) |
 | 실행 방식 | 직접 실행 (컨테이너·systemd 미사용), 백엔드 Python 환경은 uv로 관리 |
 
@@ -26,6 +26,7 @@
 | v0.7.2 | 2026-10-14 | 상단 "회고" 메뉴를 "기록"에 통합: 기록 화면에 탭(방문 기록 `#/visits` / 월간 회고 `#/visits/stats`)을 두고, 예전 `#/stats`는 리다이렉트 |
 | v0.8 | 2026-10-14 | 식당 화면의 탭("내 식당" / "동네에서 찾기")을 없애고 **하나의 화면·하나의 목록**으로 통합(M8): 필터 하나로 내 식당 + 공공데이터 식당을 이어서 보여주고, 공공데이터 항목은 [추가]로 바로 내 식당이 된다. 통합 API `GET /restaurants/search`·`/restaurants/search/random`(7.2.5)이 `/places/browse`·`/places/random`을 대체(삭제). FR-90~96을 FR-90~97로 개정. 예전 `#/restaurants/explore`·`#/explore`는 `#/restaurants`로 리다이렉트. 스키마 변경 없음 |
 | v0.9 | 2026-10-14 | 「내 위치」 추가(M9): 사용자가 동네(예: 강남구 역삼동)를 정하면 추천이 그 동네의 내 식당 + 공공데이터 동네 식당 중에서 나온다. FR-100~106(5.13), `/recommendations/random`·`/candidates`에 `sigungu`·`dong` 파라미터와 `source`·`place_no` 응답 필드, `GET /places/regions?group=true`(동 그룹). 위치는 localStorage만 사용, **스키마 변경 없음** |
+| v1.0 | 2026-10-15 | 로그인 추가(5.14): 서버 세션(HttpOnly 쿠키) 기반 인증, 공개 회원가입(`ALLOW_SIGNUP`)과 계정 관리 CLI, 전 API 보호(`/health`·`/auth/login`·`/auth/signup` 제외). 테이블 `users`·`sessions`, API `POST /auth/signup`·`/auth/login`·`/auth/logout`, `GET /auth/me`, 화면 `#/login`·`#/signup`, 환경변수 `SESSION_COOKIE_SECURE`·`SESSION_TTL_DAYS`·`ALLOW_SIGNUP`. **식당 데이터는 모든 계정이 공유**한다(소유자 컬럼·데이터 분리 없음). 마이그레이션 `db/migrations/007_auth.sql` |
 
 본 문서는 기획 초안을 바탕으로 MVP 범위의 요구사항, 데이터 모델, API, 화면, 아키텍처, 일정을 정의한다. 구현은 `CLAUDE.md`의 3티어 분리 원칙을 따른다.
 
@@ -55,8 +56,8 @@
 - G6. (v0.6) 공공데이터 상가정보 카탈로그에서 식당을 검색해 이름·주소·카테고리를 자동으로 채워 등록할 수 있다(수동 입력은 유지).
 
 ### 3.2 비목표 (MVP에서 하지 않음)
-- 로그인·회원가입·권한 관리
-- 팀 공유방, 투표, 다중 사용자 데이터 분리
+- 권한 등급·역할 관리, 비밀번호 찾기·이메일 인증·소셜 로그인 (v1.0에서 로그인·회원가입 자체는 범위 내, 5.14)
+- 팀 공유방, 투표, 다중 사용자 데이터 분리 (식당 데이터는 모든 계정이 공유)
 - 지도·위치 기반 추천(좌표는 `places`에 저장만 하며 거리 계산·정렬·지도 표시는 하지 않는다)
 - 외부 맛집 API(카카오 로컬 등) 연동. 런타임에 외부 서비스를 호출하지 않는다.
 - 리뷰·평점의 소셜 기능, 사진 업로드
@@ -65,8 +66,8 @@
 **범위 내 명확화 (v0.6)**: 공공데이터포털에서 사용자가 직접 내려받은 「소상공인시장진흥공단_상가(상권)정보」 CSV를 백엔드 CLI로 DB에 **일회성·수동 임포트**하는 것은 범위 내다. 이는 외부 API 연동이 아니라 파일 임포트이며, 앱은 임포트 이후 외부 호출 없이 내부 DB의 `places` 테이블만 조회한다.
 
 ### 3.3 전제 (Assumption)
-- **MVP는 개인 사용, 단일 사용자를 기준으로 시작한다.** 사용자 식별 없이 하나의 데이터 집합만 존재한다.
-- 팀 공유와 로그인은 비목표이며 13장의 로드맵으로 둔다. 다만 확장 시 부담을 줄이기 위해 데이터 모델에 `owner_id` 등을 지금 넣지는 않고, 확장 시 마이그레이션으로 추가한다(열린 질문 참고).
+- **데이터 집합은 하나다.** v1.0부터 로그인이 있지만 접근 제어용일 뿐이며, 식당·방문·넘김 데이터는 모든 계정이 공유한다(`owner_id` 없음).
+- 팀 공유와 사용자별 데이터 분리는 비목표이며 13장의 로드맵으로 둔다. 다만 확장 시 부담을 줄이기 위해 데이터 모델에 `owner_id` 등을 지금 넣지는 않고, 확장 시 마이그레이션으로 추가한다(열린 질문 참고).
 - 서비스는 개발 서버 한 대에서 운영하며, 외부 공개 배포는 MVP 범위가 아니다. 내부망 또는 개인 환경에서 접근한다.
 - 사용 언어는 한국어 단일이다.
 
@@ -425,6 +426,24 @@ uv run python -m app.scripts.import_places <csv경로> [--sido 서울특별시] 
 - 이 기능이 쓰는 `places`가 비어 있으면(임포트 전) 위치를 정해도 내 식당만 후보가 된다.
 - **수용 기준**: 위치 없이 호출한 추천은 변경 전과 같다. `dong=역삼동`이면 `places`의 역삼1·2동이 모두 후보이고 내 식당이 섞여 나올 수 있다. `sigungu`만 주면 시군구 전체. 상태 필터를 걸면 `places`가 사라진다. 없는 동은 404 `NO_CANDIDATES`. `/places/regions?sigungu=강남구&group=true`는 "역삼동 2290"처럼 합산된 그룹 목록을 준다. 기존 `/restaurants/search?dong=역삼1동`은 그대로 동작한다.
 
+### 5.14 로그인과 회원가입 (v1.0)
+
+앱 전체를 로그인으로 보호한다. 외부(ngrok 등)에 공개해도 계정이 없는 사람은 어떤 데이터도 볼 수 없다. **식당·방문·넘김 데이터는 모든 계정이 공유**하므로, 회원가입을 열어 두면 가입한 누구나 같은 데이터를 보고 수정·삭제할 수 있다. 이를 막으려면 `ALLOW_SIGNUP=false` 로 가입을 닫고 계정을 CLI로만 만든다.
+
+| ID | 기능 | 설명 | 우선순위 |
+|----|------|------|----------|
+| FR-110 | 로그인 | `POST /auth/login`(`username`, `password`). 성공 시 세션 쿠키를 발급하고 `{username}`을 반환한다. 아이디 없음·비밀번호 불일치 모두 같은 `401`과 같은 메시지로 응답한다(계정 존재 여부 비노출, 없는 아이디도 동일 비용의 해시 검증 수행). | P0 |
+| FR-111 | 회원가입 | `POST /auth/signup`(`username`, `password`), 인증 불필요. 아이디 3~30자 `[A-Za-z0-9_]`, 비밀번호 8~128자. 중복 아이디(대소문자 무시)는 `409`, 형식 오류는 `422`. 성공하면 계정 생성과 동시에 세션을 발급(자동 로그인)하고 `201 {username}`. `ALLOW_SIGNUP=false` 이면 `403`. | P0 |
+| FR-112 | 세션 | 서버 발급 세션. 토큰은 `secrets.token_urlsafe(32)`, DB에는 SHA-256 해시만 저장. 쿠키 `session`: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure`는 `SESSION_COOKIE_SECURE`, 수명은 `SESSION_TTL_DAYS`(기본 14일, 고정 만료). JWT와 `localStorage` 사용 안 함. 만료 세션은 로그인·가입 시 기회적으로 삭제한다. | P0 |
+| FR-113 | 로그아웃·내 정보 | `POST /auth/logout`은 세션 행을 삭제하고 쿠키를 지운다(204). `GET /auth/me`는 현재 계정 `{username}` 또는 `401`. | P0 |
+| FR-114 | API 보호 | `/health`, `/auth/login`, `/auth/signup`, `/auth/logout`을 제외한 모든 `/api/v1` 라우터에 `get_current_user` 의존성을 라우터 단위로 건다. 세션이 없거나 만료되면 `401 UNAUTHORIZED`. | P0 |
+| FR-115 | 비밀번호 저장 | 표준 라이브러리 `hashlib.scrypt`(N=2^15, r=8, p=1, 사용자별 16바이트 무작위 salt), `scrypt$N$r$p$salt$hash` 자기 서술 형식, `hmac.compare_digest` 상수 시간 비교. 외부 의존성이 없고 메모리 하드 KDF라 채택. | P0 |
+| FR-116 | 계정 관리 CLI | `uv run python -m app.scripts.manage_users create\|passwd\|delete\|list`. 비밀번호는 `getpass` 프롬프트(점검용 `--password-stdin`). 비밀번호 변경·계정 삭제 시 해당 계정의 세션이 모두 사라진다. 가입을 닫은 환경의 계정 생성 수단이다. | P0 |
+| FR-117 | 화면 | `#/login`, `#/signup`(서로 링크, 가입은 비밀번호 확인 일치를 클라이언트에서 검사). 시작 시 `/auth/me`를 호출하고, 로그인하지 않았거나 어떤 API든 `401`을 받으면 로그인 화면으로 보낸 뒤 로그인·가입 후 원래 요청한 해시 경로로 돌아온다. 상단 바에 사용자 이름과 로그아웃 버튼을 둔다. | P0 |
+
+- **비목표**: 비밀번호 찾기·이메일 인증, 로그인 시도 횟수 제한(공개 환경에서는 필요 시 프록시 레벨에서 처리), 계정별 데이터 분리, 권한 등급.
+- **수용 기준**: 로그인 없이 `GET /restaurants`는 401, 로그인 후 200. 잘못된 비밀번호와 없는 아이디는 같은 401 본문. 로그아웃·만료·비밀번호 변경 후 이전 쿠키는 401. 가입 201+`Set-Cookie`(HttpOnly), 중복 409, 형식 오류 422, `ALLOW_SIGNUP=false` 403.
+
 ---
 
 ## 6. 데이터 모델
@@ -523,11 +542,20 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 
 "마지막 방문일", "연속 넘김 수", "곧 잊혀짐 여부", 카테고리별 마지막 방문일, 월간 통계, 장소 "등록됨" 여부(`already_registered`)는 모두 별도 컬럼으로 저장하지 않고 `visits`·`recommendation_skips`에서 조회 시 계산한다(정합성 우선, 데이터 규모가 작음).
 
+### 6.7 users, sessions (v1.0)
+
+`users`: `id` BIGINT UNSIGNED PK, `username` VARCHAR(50) NOT NULL UNIQUE(`uq_users_username`), `password_hash` VARCHAR(255) NOT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `last_login_at` DATETIME NULL.
+
+`sessions`: `id` BIGINT UNSIGNED PK, `token_hash` CHAR(64) NOT NULL UNIQUE(SHA-256 hex), `user_id` BIGINT UNSIGNED NOT NULL FK → `users.id` ON DELETE CASCADE, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `expires_at` DATETIME NOT NULL. 인덱스 `idx_sessions_user (user_id)`, `idx_sessions_expires_at (expires_at)`.
+
+다른 테이블과 FK가 없다(식당 데이터는 공유). DDL은 `db/schema.sql`(`CREATE TABLE IF NOT EXISTS`)과 `db/migrations/007_auth.sql`에 있다.
+
 ---
 
 ## 7. API 명세 (초안)
 
 - Base path: `/api/v1`, 형식: JSON, 문자셋 UTF-8
+- (v1.0) `/health`와 `/auth/*`를 제외한 모든 엔드포인트는 세션 쿠키가 필요하며, 없거나 만료되면 `401`(`UNAUTHORIZED`)이다. 아래 표의 나머지 엔드포인트는 모두 이 보호를 받는다.
 - 문서: FastAPI 자동 문서(`/docs`)를 개발 환경에서 제공한다.
 - 오류 응답 공통 형식: `{"error": {"code": "NOT_FOUND", "message": "..."}}`
 - 입력 검증은 Pydantic 스키마로 수행하며 실패 시 `422`를 반환한다.
@@ -537,6 +565,10 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 | 메서드 | 경로 | 설명 | 주요 파라미터 | 우선순위 |
 |--------|------|------|---------------|----------|
 | GET | `/api/v1/health` | 헬스체크. 앱 상태와 DB 연결 여부를 반환한다. | - | P0 |
+| POST | `/api/v1/auth/signup` | (v1.0) 회원가입 + 자동 로그인(세션 쿠키). 인증 불필요. `ALLOW_SIGNUP=false`면 403, 중복 409 | body: username(3~30, `[A-Za-z0-9_]`), password(8~128) | P0 |
+| POST | `/api/v1/auth/login` | (v1.0) 로그인, 세션 쿠키 발급. 실패는 항상 같은 401 | body: username, password | P0 |
+| POST | `/api/v1/auth/logout` | (v1.0) 세션 삭제와 쿠키 제거(204) | - | P0 |
+| GET | `/api/v1/auth/me` | (v1.0) 현재 계정 `{username}` 또는 401 | - | P0 |
 | GET | `/api/v1/restaurants` | 식당 목록 조회. v0.5: 응답 항목에 `is_expiring`, `consecutive_skips`, `skip_suggestion`, `last_visited_on` 포함 | query: `q`, `category`, `price_level`, `status`, `is_favorite`, `sort`, `limit`, `offset` | P0 |
 | POST | `/api/v1/restaurants` | 식당 등록. v0.6: `place_no`(선택) 허용 | body: name, category, status, price_level, location, memo, is_favorite, place_no | P0 |
 | GET | `/api/v1/restaurants/{id}` | 식당 상세. v0.5: 위와 같은 파생 필드 포함 | path: id | P0 |
@@ -730,6 +762,7 @@ restaurants N ··· 0..1 places   (v0.6, restaurants.place_no = places.place_no
 | 식당 (통합 목록, v0.8) | `/restaurants` | 키워드 검색창, 카테고리 칩, 시군구→동 select, 접이식 상세 필터(상태·가격대·즐겨찾기·정렬), [이 조건에서 추천받기]와 "내 식당만", 요약("내 식당 n곳 · 동네 식당 m곳"), 내 식당 항목(배지·즐겨찾기 별·상세 링크)과 이어지는 공공데이터 항목([추가]), [더 보기], [+ 식당 추가] |
 | 식당 상세 | `/restaurants/:id` | 전체 정보, 최근 방문 이력, [수정], [삭제], [방문 기록 추가] |
 | 식당 등록·수정 | `/restaurants/new`, `/restaurants/:id/edit` | 입력 폼(이름, 카테고리, 상태, 가격대, 위치, 메모, 즐겨찾기), 검증 오류 표시, [저장], [취소]. v0.6: 등록 화면 상단에 "공공데이터에서 찾기" 검색 |
+| 로그인·회원가입 (v1.0) | `/login`, `/signup` | 아이디·비밀번호 폼(가입은 비밀번호 확인 포함), 오류 표시, 서로 링크. 상단 바 우측에 사용자 이름과 로그아웃 |
 | 방문 기록 | `/visits` | 기간 필터, 날짜별 방문 목록(식당명·날짜·메모), [삭제], 식당 상세 링크 |
 
 | 월간 회고 (v0.5) | `/visits/stats` | [이전 달]/[다음 달] 월 선택, 총 방문 수, 카테고리 분포 CSS 막대(건수·비율 병기), 최다 방문 식당 상위 3, 최장 연속 동일 카테고리, 추천 수락 비율, 넘김 횟수, 빈 상태 |
@@ -841,6 +874,9 @@ backend/app/
 | backend/.env | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `127.0.0.1`, `3306`, ... |
 | backend/.env | `CORS_ALLOW_ORIGINS` | `http://localhost:5173` |
 | backend/.env | `APP_ENV`, `APP_PORT` | `dev`, `8000` |
+| backend/.env | `SESSION_COOKIE_SECURE` | `false`(로컬 http), ngrok 등 https 공개 시 `true` |
+| backend/.env | `SESSION_TTL_DAYS` | `14` (세션 수명, 일) |
+| backend/.env | `ALLOW_SIGNUP` | `true`(기본). `false`면 `POST /auth/signup`이 403, 계정은 CLI로만 생성 |
 
 ### 10.4 향후 분리 방안
 - **프론트엔드 분리**: 정적 빌드 결과물을 별도 웹서버 또는 CDN에 배포한다. 웹서버(Nginx 등)가 `/api`를 백엔드로 프록시하거나, `VITE_API_BASE_URL`을 백엔드 절대 주소로 바꾸고 백엔드 `CORS_ALLOW_ORIGINS`에 프론트엔드 Origin을 추가한다.

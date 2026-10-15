@@ -40,6 +40,12 @@ sudo mariadb dinner_service < db/migrations/005_m5.sql   # 신규 설치는 sche
 sudo mariadb dinner_service < db/migrations/006_places.sql   # 신규 설치는 schema.sql 에 이미 포함
 ```
 
+**기존 DB를 v1.0(로그인)으로 올리기** (추가형, 재실행 안전): `users`, `sessions` 테이블을 추가한다.
+
+```bash
+sudo mariadb dinner_service < db/migrations/007_auth.sql   # 신규 설치는 schema.sql 에 이미 포함
+```
+
 `dinner_app` 은 `dinner_service.*` 에 대한 SELECT/INSERT/UPDATE/DELETE 권한만 가진다. 스키마 변경(DDL)은 root로 적용한다.
 
 ## 2. 애플리케이션 계층 (FastAPI, uv)
@@ -55,6 +61,20 @@ curl http://localhost:8000/api/v1/health                  # {"status":"ok","app"
 
 의존성은 `uv add <pkg>` 로만 관리한다 (pip, requirements.txt 사용 금지).
 API 문서: `http://localhost:8000/docs` (APP_ENV=dev 일 때).
+
+### 로그인과 계정 (v1.0)
+
+모든 API는 로그인(HttpOnly 세션 쿠키)이 필요하다(`/health`, `/auth/login`, `/auth/signup` 제외). 식당 데이터는 **모든 계정이 공유**한다. 화면의 `#/signup` 으로 누구나 가입할 수 있으므로, 외부에 공개할 때 가입을 막으려면 `backend/.env` 에 `ALLOW_SIGNUP=false` 를 두고 계정은 CLI로 만든다. https(ngrok 등)로 공개할 때는 `SESSION_COOKIE_SECURE=true`.
+
+```bash
+cd backend
+uv run python -m app.scripts.manage_users create <아이디>   # 비밀번호는 프롬프트로 입력(8자 이상)
+uv run python -m app.scripts.manage_users passwd <아이디>   # 비밀번호 변경(기존 로그인 모두 종료)
+uv run python -m app.scripts.manage_users delete <아이디> [--yes]
+uv run python -m app.scripts.manage_users list
+```
+
+가입 규칙: 아이디 3~30자 영문·숫자·`_`(대소문자 구분 없이 중복 불가), 비밀번호 8~128자. 비밀번호는 scrypt 해시로 저장한다.
 
 ### 공공데이터 식당 카탈로그 임포트 (선택, M6)
 
@@ -100,13 +120,14 @@ npm run build && npm run preview   # dist/ 빌드 후 :4173 에서 서빙 (CORS 
 
 | 위치 | 변수 |
 |------|------|
-| backend/.env | `DB_HOST` `DB_PORT` `DB_NAME` `DB_USER` `DB_PASSWORD` `CORS_ALLOW_ORIGINS` `APP_ENV` `APP_PORT` |
+| backend/.env | `DB_HOST` `DB_PORT` `DB_NAME` `DB_USER` `DB_PASSWORD` `CORS_ALLOW_ORIGINS` `APP_ENV` `APP_PORT` `SESSION_COOKIE_SECURE` `SESSION_TTL_DAYS` `ALLOW_SIGNUP` |
 | frontend/.env | `VITE_API_BASE_URL` `API_PROXY_TARGET` |
 
 ## API 요약 (M2)
 
 Base: `/api/v1`. 오류 형식: `{"error": {"code", "message"}}` (422는 `details` 포함).
 
+- `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` (v1.0). 이 밖의 모든 엔드포인트는 로그인 필요(401).
 - `GET/POST /restaurants`, `GET/PUT/DELETE /restaurants/{id}`, `PATCH /restaurants/{id}/favorite`
   - 목록 query: `q`, `category`(반복), `price_level`(반복), `status`, `is_favorite`, `sort`(`created_desc|name|last_visited_desc`), `limit`, `offset`
 - `POST/GET /visits`, `DELETE /visits/{id}` (GET query: `restaurant_id`, `from`, `to`, `limit`, `offset`)

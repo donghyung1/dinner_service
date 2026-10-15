@@ -44,6 +44,15 @@ a { color: var(--ink); text-underline-offset: 2px; }
 #nav a:hover { background: var(--hover); }
 #nav a[aria-current='page'] { background: var(--ink); color: var(--paper); font-weight: 800; }
 
+/* 로그인 사용자 표시와 로그아웃 */
+.userbox { display: flex; align-items: center; gap: .1rem; min-width: 0; margin-left: auto; }
+.userbox[hidden] { display: none; }
+.user-name { max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .85rem; font-weight: 600; }
+.is-login #nav { display: none; }
+.login-page { max-width: 360px; margin: 2rem auto; display: grid; gap: 1rem; }
+.login-page h1 { margin: 0; font-family: var(--font-display); font-weight: 400; }
+.login-page form { display: grid; gap: .9rem; }
+
 /* 모바일: 하단 고정 탭 바 */
 @media (max-width: 640px) {
   :root { --tabbar-h: calc(56px + env(safe-area-inset-bottom)); }
@@ -109,7 +118,7 @@ legend { font-weight: 700; padding: 0; margin-bottom: .4rem; display: flex; alig
 .field { display: grid; gap: .3rem; min-width: 0; }
 .field label, .row-fields > .field > label { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: .35rem; }
 .req { color: var(--stamp); }
-input[type='text'], input[type='search'], input[type='number'], input[type='date'], select, textarea {
+input[type='text'], input[type='password'], input[type='search'], input[type='number'], input[type='date'], select, textarea {
   font: inherit; width: 100%; min-height: 44px; padding: .5rem .75rem; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
 textarea { resize: vertical; }
 [aria-invalid='true'] { border-color: var(--stamp) !important; }

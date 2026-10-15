@@ -22,6 +22,21 @@ class NotFoundError(AppError):
     code = "NOT_FOUND"
 
 
+class UnauthorizedError(AppError):
+    status_code = 401
+    code = "UNAUTHORIZED"
+
+
+class ForbiddenError(AppError):
+    status_code = 403
+    code = "FORBIDDEN"
+
+
+class ConflictError(AppError):
+    status_code = 409
+    code = "CONFLICT"
+
+
 class NoCandidatesError(NotFoundError):
     code = "NO_CANDIDATES"
 
@@ -38,7 +53,7 @@ def error_body(code: str, message: str, details: list | None = None) -> dict:
     return {"error": err}
 
 
-_HTTP_CODES = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 400: "BAD_REQUEST"}
+_HTTP_CODES = {401: "UNAUTHORIZED", 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 400: "BAD_REQUEST"}
 
 
 def register_error_handlers(app: FastAPI) -> None:

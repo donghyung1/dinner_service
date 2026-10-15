@@ -37,7 +37,7 @@ function matchRoute(routes, path) {
   return null;
 }
 
-export function createRouter({ routes, outlet, notFound, onChange }) {
+export function createRouter({ routes, outlet, notFound, onChange, guard }) {
   let cleanup = null;
   let token = 0;
 
@@ -46,6 +46,11 @@ export function createRouter({ routes, outlet, notFound, onChange }) {
     if (typeof cleanup === 'function') cleanup();
     cleanup = null;
     const path = currentPath();
+    const redirect = guard?.(path);
+    if (redirect) {
+      window.location.replace(`#${redirect}`);
+      return;
+    }
     const hit = matchRoute(routes, path);
     const view = hit ? hit.route.view : notFound;
     outlet.replaceChildren();
